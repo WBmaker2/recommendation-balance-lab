@@ -171,4 +171,71 @@ describe('balance scenario previews', () => {
     expect(() => saveBalanceSnapshot([{ ...snapshots[0], result: { ...snapshots[0].result, cards: [] } }], configs[1], valid)).toThrowError(InvalidBalanceSnapshotError);
     expect(canCompareBalance([{ ...snapshots[0], result: {} as never }, snapshots[1], snapshots[2]])).toBe(false);
   });
+
+  it('rejects sparse/reordered/extra-key result arrays and exact-shape violations', () => {
+    const config = { diversityLevel: 0, memoryMode: 'keep' } as const;
+    const valid = createBalancePreview(scienceThreePlusHistoryRequest, config, CARDS, balanced);
+    const sparseCards = [...valid.cards] as Array<typeof valid.cards[number]>;
+    delete sparseCards[0];
+    const sparseExplanations = [...valid.explanations] as Array<typeof valid.explanations[number]>;
+    delete sparseExplanations[0];
+    const extraCards = [...valid.cards] as Array<typeof valid.cards[number]> & { extra?: string };
+    extraCards.extra = 'unexpected';
+    const reorderedCards = [...valid.cards].reverse();
+    const malformed = [
+      { ...valid, cards: sparseCards },
+      { ...valid, explanations: sparseExplanations },
+      { ...valid, cards: extraCards },
+      { ...valid, cards: reorderedCards },
+      { ...valid, extra: true },
+      (() => {
+        const missing = { ...valid } as Record<string, unknown>;
+        delete missing.inputFingerprint;
+        return missing;
+      })(),
+    ];
+    for (const result of malformed) {
+      expect(isValidRecommendationResult(result)).toBe(false);
+      expect(() => saveBalanceSnapshot([], config, result as never)).toThrowError(
+        expect.objectContaining({ name: 'InvalidBalanceSnapshotError' }),
+      );
+    }
+  });
+
+  it('rejects sparse existing arrays and malformed snapshot/config shapes', () => {
+    const configs = [
+      { diversityLevel: 0, memoryMode: 'keep' },
+      { diversityLevel: 1, memoryMode: 'keep' },
+      { diversityLevel: 2, memoryMode: 'keep' },
+    ] as const;
+    let snapshots = [] as readonly import('./balanceScenarios').BalanceSnapshot[];
+    for (const config of configs) {
+      const saved = saveBalanceSnapshot(snapshots, config, createBalancePreview(scienceThreePlusHistoryRequest, config, CARDS, balanced));
+      if (saved.ok) snapshots = saved.snapshots;
+    }
+    const sparseThree = [...snapshots] as Array<typeof snapshots[number]>;
+    delete sparseThree[1];
+    const sparseTwo = new Array<typeof snapshots[number]>(2);
+    sparseTwo[0] = snapshots[0];
+    expect(canCompareBalance(sparseThree)).toBe(false);
+    expect(() => saveBalanceSnapshot(sparseTwo, configs[0], createBalancePreview(scienceThreePlusHistoryRequest, configs[0], CARDS, balanced))).toThrowError(InvalidBalanceSnapshotError);
+    expect(() => saveBalanceSnapshot([{ ...snapshots[0], extra: true } as never], configs[1], createBalancePreview(scienceThreePlusHistoryRequest, configs[1], CARDS, balanced))).toThrowError(InvalidBalanceSnapshotError);
+    expect(() => saveBalanceSnapshot([{ id: 'scenario-a', config: configs[0] } as never], configs[1], createBalancePreview(scienceThreePlusHistoryRequest, configs[1], CARDS, balanced))).toThrowError(InvalidBalanceSnapshotError);
+    expect(() => saveBalanceSnapshot([{ ...snapshots[0], config: { ...configs[0], extra: true } } as never], configs[1], createBalancePreview(scienceThreePlusHistoryRequest, configs[1], CARDS, balanced))).toThrowError(InvalidBalanceSnapshotError);
+  });
+
+  it('returns duplicate-config before limit for a valid full A/B/C array', () => {
+    const configs = [
+      { diversityLevel: 0, memoryMode: 'keep' },
+      { diversityLevel: 1, memoryMode: 'keep' },
+      { diversityLevel: 2, memoryMode: 'keep' },
+    ] as const;
+    let snapshots = [] as readonly import('./balanceScenarios').BalanceSnapshot[];
+    for (const config of configs) {
+      const saved = saveBalanceSnapshot(snapshots, config, createBalancePreview(scienceThreePlusHistoryRequest, config, CARDS, balanced));
+      if (saved.ok) snapshots = saved.snapshots;
+    }
+    const duplicate = saveBalanceSnapshot(snapshots, configs[0], createBalancePreview(scienceThreePlusHistoryRequest, configs[0], CARDS, balanced));
+    expect(duplicate).toEqual({ ok: false, reason: 'duplicate-config' });
+  });
 });

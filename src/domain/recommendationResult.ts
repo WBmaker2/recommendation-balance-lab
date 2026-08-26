@@ -6,6 +6,20 @@ import { recommend, type RecommendationRequest, type RecommendationResult } from
 
 const cloneCard = (card: ContentCard): ContentCard => ({ ...card });
 
+export const isDenseArray = (value: unknown): value is readonly unknown[] => {
+  try {
+    if (!Array.isArray(value)) return false;
+    const keys = Object.keys(value);
+    if (keys.length !== value.length) return false;
+    for (let index = 0; index < value.length; index += 1) {
+      if (!Object.hasOwn(value, index) || !Object.hasOwn(value, String(index))) return false;
+    }
+    return keys.every((key, index) => key === String(index));
+  } catch {
+    return false;
+  }
+};
+
 export const cloneRecommendationResult = (result: RecommendationResult): RecommendationResult => ({
   ...result,
   request: { ...result.request, interest: { ...result.request.interest } },
@@ -21,8 +35,11 @@ const deepEqual = (a: unknown, b: unknown): boolean => {
   if (Object.is(a, b)) return true;
   if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false;
   if (Array.isArray(a) || Array.isArray(b)) {
-    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
-    return a.every((item, index) => deepEqual(item, b[index]));
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || !isDenseArray(a) || !isDenseArray(b)) return false;
+    for (let index = 0; index < a.length; index += 1) {
+      if (!deepEqual(a[index], b[index])) return false;
+    }
+    return true;
   }
   const aRecord = a as Record<string, unknown>;
   const bRecord = b as Record<string, unknown>;
@@ -51,15 +68,16 @@ const isRequestShape = (value: unknown): value is RecommendationRequest => {
 };
 
 const isCanonicalCardList = (value: unknown): value is readonly ContentCard[] => {
-  if (!Array.isArray(value) || value.length !== 8) return false;
+  if (!isDenseArray(value) || value.length !== 8) return false;
   const ids = new Set<string>();
-  return value.every((card) => {
+  for (let index = 0; index < value.length; index += 1) {
+    const card = value[index] as ContentCard;
     if (!card || typeof card !== 'object' || ids.has(card.id)) return false;
     const canonical = CARDS.find((item) => item.id === card.id);
     if (!canonical || !deepEqual(card, canonical)) return false;
     ids.add(card.id);
-    return true;
-  });
+  }
+  return true;
 };
 
 export const isValidRecommendationResult = (value: unknown): value is RecommendationResult => {

@@ -1,6 +1,6 @@
 import { TOPIC_ORDER } from '../data/topics';
 import { recommend, type RecommendationRequest, type RecommendationResult } from './recommendationEngine';
-import { cloneRecommendationResult, isValidRecommendationResult } from './recommendationResult';
+import { cloneRecommendationResult, isDenseArray, isValidRecommendationResult } from './recommendationResult';
 import type { ContentCard, DiversityLevel, MemoryMode, SupplyProfile } from './types';
 
 export interface BalanceConfig {
@@ -34,12 +34,24 @@ export class InvalidBalanceSnapshotError extends Error {
 
 const isDiversityLevel = (value: unknown): value is DiversityLevel => value === 0 || value === 1 || value === 2;
 const isMemoryMode = (value: unknown): value is MemoryMode => value === 'keep' || value === 'clear';
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  try {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    return Object.getPrototypeOf(value) === Object.prototype;
+  } catch {
+    return false;
+  }
+};
 const isBalanceConfig = (value: unknown): value is BalanceConfig => {
-  if (!value || typeof value !== 'object') return false;
-  const config = value as Partial<BalanceConfig>;
-  const keys = Object.keys(config);
-  return keys.length === 2 && keys.includes('diversityLevel') && keys.includes('memoryMode')
-    && isDiversityLevel(config.diversityLevel) && isMemoryMode(config.memoryMode);
+  try {
+    if (!isPlainObject(value)) return false;
+    const config = value as Partial<BalanceConfig>;
+    const keys = Object.keys(config);
+    return keys.length === 2 && keys.includes('diversityLevel') && keys.includes('memoryMode')
+      && isDiversityLevel(config.diversityLevel) && isMemoryMode(config.memoryMode);
+  } catch {
+    return false;
+  }
 };
 const cloneConfig = (config: BalanceConfig): BalanceConfig => ({ ...config });
 const sameConfig = (left: BalanceConfig, right: BalanceConfig): boolean =>
@@ -62,15 +74,21 @@ export const createBalancePreview = (
 };
 
 const isSnapshotShape = (value: unknown): value is BalanceSnapshot => {
-  if (!value || typeof value !== 'object') return false;
-  const snapshot = value as Partial<BalanceSnapshot>;
-  return (snapshot.id === 'scenario-a' || snapshot.id === 'scenario-b' || snapshot.id === 'scenario-c')
-    && isBalanceConfig(snapshot.config)
-    && isValidRecommendationResult(snapshot.result)
-    && sameConfig(snapshot.config, {
-      diversityLevel: snapshot.result.request.diversityLevel,
-      memoryMode: snapshot.result.request.memoryMode,
-    });
+  try {
+    if (!isPlainObject(value)) return false;
+    const snapshot = value as Partial<BalanceSnapshot>;
+    const keys = Object.keys(snapshot);
+    if (keys.length !== 3 || !keys.includes('id') || !keys.includes('config') || !keys.includes('result')) return false;
+    return (snapshot.id === 'scenario-a' || snapshot.id === 'scenario-b' || snapshot.id === 'scenario-c')
+      && isBalanceConfig(snapshot.config)
+      && isValidRecommendationResult(snapshot.result)
+      && sameConfig(snapshot.config, {
+        diversityLevel: snapshot.result.request.diversityLevel,
+        memoryMode: snapshot.result.request.memoryMode,
+      });
+  } catch {
+    return false;
+  }
 };
 
 export const saveBalanceSnapshot = (
@@ -78,7 +96,7 @@ export const saveBalanceSnapshot = (
   config: BalanceConfig,
   result: RecommendationResult,
 ): SaveSnapshotResult => {
-  if (!Array.isArray(existing) || existing.length > 3 || !isBalanceConfig(config) || !isValidRecommendationResult(result)) {
+  if (!isDenseArray(existing) || existing.length > 3 || !isBalanceConfig(config) || !isValidRecommendationResult(result)) {
     throw new InvalidBalanceSnapshotError();
   }
   if (!sameConfig(config, {
@@ -110,7 +128,7 @@ export const saveBalanceSnapshot = (
 };
 
 export const canCompareBalance = (snapshots: readonly BalanceSnapshot[]): boolean => {
-  if (!Array.isArray(snapshots) || snapshots.length !== 3) return false;
+  if (!isDenseArray(snapshots) || snapshots.length !== 3) return false;
   const expectedIds: BalanceSnapshot['id'][] = ['scenario-a', 'scenario-b', 'scenario-c'];
   const configs: BalanceConfig[] = [];
   try {

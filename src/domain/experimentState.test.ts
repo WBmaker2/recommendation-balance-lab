@@ -5,8 +5,10 @@ import { SUPPLY_PROFILES } from '../data/supplyProfiles';
 import type { ContentCard, InterestRecord } from './types';
 import { recommend, type RecommendationRequest, type RecommendationResult } from './recommendationEngine';
 import {
+  applyExploration,
   canRunPrediction,
   experimentReducer,
+  findExplorationCandidates,
   initialExperimentState,
   missionForStage,
   nextPracticeCard,
@@ -36,6 +38,11 @@ const scienceThreeRequest: RecommendationRequest = {
 const balanced = SUPPLY_PROFILES.find((item) => item.id === 'balanced')!;
 const initialResult = recommend(zeroInterestRequest, CARDS, balanced);
 const scienceHeavyResult = recommend(scienceThreeRequest, CARDS, balanced);
+const explorationResult = recommend({
+  ...scienceThreeRequest,
+  interest: { ...scienceThreeInterest, art: 1 },
+  round: 2,
+}, CARDS, balanced);
 
 const card = (id: string) => CARDS.find((item) => item.id === id)!;
 const select = (state: ExperimentState, selectedId: string, replacementId: string): ExperimentState =>
@@ -164,12 +171,89 @@ describe('추천 실험 상태 머신', () => {
       type: 'SUBMIT_PREDICTION', answer, result: scienceHeavyResult,
     });
     const exploration = experimentReducer(compared, { type: 'SUBMIT_DISTRIBUTION', answer });
-    const explored = experimentReducer(exploration, { type: 'RECORD_EXPLORATION', topicId: 'art', result: initialResult });
+    const explored = experimentReducer(exploration, { type: 'RECORD_EXPLORATION', topicId: 'art', result: explorationResult });
     expect(explored.stage).toBe('balance');
-    expect(explored.explorationResult).toEqual(initialResult);
-    const duplicate = experimentReducer(explored, { type: 'RECORD_EXPLORATION', topicId: 'sports', result: initialResult });
+    expect(explored.interest).toEqual({ ...scienceThreeInterest, art: 1 });
+    expect(explored.explorationResult).toEqual(explorationResult);
+    const duplicate = experimentReducer(explored, { type: 'RECORD_EXPLORATION', topicId: 'sports', result: explorationResult });
     expect(duplicate.stage).toBe('balance');
-    expect(duplicate.lastError).toBeTruthy();
+    expect(duplicate.lastError).toBe('탐색은 한 번만 기록할 수 있습니다.');
+    expect(duplicate.changedResult).toBe(explored.changedResult);
+    expect(duplicate.explorationResult).toBe(explored.explorationResult);
+  });
+
+  it('실제 카드 수가 저장된 수보다 우선하고 후보는 비어 있는 주제부터 고른다', () => {
+    const tampered = {
+      ...scienceHeavyResult,
+      topicCounts: { science: 0, art: 8, sports: 0, nature: 0, history: 0 },
+    };
+    expect(findExplorationCandidates(tampered, CARDS, 'science').map((candidate) => candidate.topicId)).toEqual([
+      'history', 'art', 'sports', 'nature',
+    ]);
+  });
+
+  it('후보는 주제별로 입력 순서의 새 카드 하나만 남긴다', () => {
+    const result = scienceHeavyResult;
+    const cards = [card('history-2'), card('history-2'), card('art-2'), card('science-1'), card('sports-2'), card('nature-2')];
+    const candidates = findExplorationCandidates(result, cards, 'science');
+    expect(candidates).toHaveLength(4);
+    expect(candidates.map((item) => item.id)).toEqual(['history-2', 'art-2', 'sports-2', 'nature-2']);
+  });
+
+  it('탐색은 포커스에 다시 토큰을 더하지 않고, 유효하지 않은 주제는 명시적으로 거부한다', () => {
+    const original = { ...scienceThreeInterest };
+    expect(applyExploration(original, 'science', 'science')).toBe(original);
+    expect(applyExploration(original, 'art', 'science')).toEqual({ ...scienceThreeInterest, art: 1 });
+    expect(() => applyExploration(original, 'unknown' as never, 'science')).toThrowError(
+      expect.objectContaining({ name: 'InvalidExplorationError', message: '탐색 주제가 올바르지 않습니다.' }),
+    );
+  });
+
+  it('탐색 결과는 요청을 보존한 round+1 결정적 결과만 받고 변조 결과를 거부한다', () => {
+    const answer: PredictionAnswer = { focusDirection: 'increase', varietyDirection: 'decrease' };
+    const compared = experimentReducer(stateAfterThreeSameTopicSelections, {
+      type: 'SUBMIT_PREDICTION', answer, result: scienceHeavyResult,
+    });
+    const ready = experimentReducer(compared, { type: 'SUBMIT_DISTRIBUTION', answer });
+    const tampered = { ...explorationResult, topicCounts: { ...explorationResult.topicCounts, art: 8, science: 0 } };
+    const rejected = experimentReducer(ready, { type: 'RECORD_EXPLORATION', topicId: 'art', result: tampered });
+    expect(rejected.stage).toBe('exploration');
+    expect(rejected.explorationResult).toBeNull();
+    expect(rejected.lastError).toBe('탐색 결과가 가상 규칙과 일치하지 않습니다.');
+
+    const accepted = experimentReducer(ready, { type: 'RECORD_EXPLORATION', topicId: 'art', result: explorationResult });
+    expect(accepted.stage).toBe('balance');
+    expect(accepted.explorationResult?.request).toEqual({
+      interest: { ...scienceThreeInterest, art: 1 },
+      diversityLevel: 0,
+      memoryMode: 'keep',
+      supplyProfileId: 'balanced',
+      round: 2,
+      feedSize: 8,
+    });
+    expect(accepted.changedResult).toEqual(scienceHeavyResult);
+  });
+
+  it('탐색 결과의 관심 기록, 공급, 라운드 변조를 모두 거부한다', () => {
+    const answer: PredictionAnswer = { focusDirection: 'increase', varietyDirection: 'decrease' };
+    const compared = experimentReducer(stateAfterThreeSameTopicSelections, {
+      type: 'SUBMIT_PREDICTION', answer, result: scienceHeavyResult,
+    });
+    const ready = experimentReducer(compared, { type: 'SUBMIT_DISTRIBUTION', answer });
+    const tamperedResults = [
+      {
+        ...explorationResult,
+        request: { ...explorationResult.request, interest: { ...explorationResult.request.interest, art: 7 } },
+      },
+      { ...explorationResult, request: { ...explorationResult.request, supplyProfileId: 'nature-rich' as const } },
+      { ...explorationResult, request: { ...explorationResult.request, round: 9 } },
+    ];
+    for (const result of tamperedResults) {
+      const rejected = experimentReducer(ready, { type: 'RECORD_EXPLORATION', topicId: 'art', result });
+      expect(rejected.stage).toBe('exploration');
+      expect(rejected.explorationResult).toBeNull();
+      expect(rejected.lastError).toBe('탐색 결과가 가상 규칙과 일치하지 않습니다.');
+    }
   });
 
   it('연습 카드는 원래 순서에서 사용하지 않은 첫 카드를 고르고 소진을 명시한다', () => {
@@ -232,7 +316,7 @@ describe('추천 실험 상태 머신', () => {
       type: 'SUBMIT_PREDICTION', answer, result: scienceHeavyResult,
     });
     const ready = experimentReducer(compared, { type: 'SUBMIT_DISTRIBUTION', answer });
-    const externalResult = JSON.parse(JSON.stringify(initialResult)) as RecommendationResult;
+    const externalResult = JSON.parse(JSON.stringify(explorationResult)) as RecommendationResult;
     const explored = experimentReducer(ready, {
       type: 'RECORD_EXPLORATION', topicId: 'art', result: externalResult,
     });
@@ -243,7 +327,7 @@ describe('추천 실험 상태 머신', () => {
     externalResult.tokenBreakdown.art.totalTokens = 888;
     externalResult.explanations[0].cardId = 'art-8';
 
-    expect(explored.explorationResult).toEqual(initialResult);
+    expect(explored.explorationResult).toEqual(explorationResult);
   });
 
   it('알 수 없는 런타임 action은 증거를 보존하고 안정적인 오류를 남긴다', () => {

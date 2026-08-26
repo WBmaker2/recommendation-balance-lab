@@ -1,6 +1,7 @@
 import { CARDS } from '../data/cards';
 import { MISSIONS } from '../data/missions';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
+import { TOPIC_ORDER } from '../data/topics';
 import { recommend, type RecommendationResult } from './recommendationEngine';
 import { countTopicCards } from './distribution';
 import type {
@@ -65,7 +66,13 @@ export class PracticeCardExhaustedError extends Error {
   }
 }
 
-const topics: readonly TopicId[] = ['science', 'art', 'sports', 'nature', 'history'];
+export class InvalidExplorationError extends Error {
+  constructor() {
+    super('탐색 주제가 올바르지 않습니다.');
+    this.name = 'InvalidExplorationError';
+  }
+}
+
 const zeroInterest = (): InterestRecord => ({
   science: 0,
   art: 0,
@@ -82,6 +89,9 @@ const isSameCard = (left: ContentCard, right: ContentCard): boolean =>
   left.topicId === right.topicId &&
   left.title === right.title &&
   left.summary === right.summary;
+
+const isTopicId = (value: unknown): value is TopicId =>
+  typeof value === 'string' && (TOPIC_ORDER as readonly string[]).includes(value);
 
 const toIdSet = (usedIds: Iterable<string>): Set<string> => new Set(usedIds);
 
@@ -120,7 +130,7 @@ const cloneResult = (result: RecommendationResult): RecommendationResult => ({
   cards: result.cards.map(cloneCard),
   topicCounts: { ...result.topicCounts },
   tokenBreakdown: Object.fromEntries(
-    topics.map((topicId) => [topicId, { ...result.tokenBreakdown[topicId] }]),
+    TOPIC_ORDER.map((topicId) => [topicId, { ...result.tokenBreakdown[topicId] }]),
   ) as RecommendationResult['tokenBreakdown'],
   explanations: result.explanations.map((explanation) => ({ ...explanation })),
 });
@@ -152,7 +162,47 @@ const direction = (before: number, after: number): DirectionAnswer =>
 
 const varietyCount = (result: RecommendationResult): number => {
   const counts = countTopicCards(result.cards);
-  return topics.filter((topicId) => counts[topicId] > 0).length;
+  return TOPIC_ORDER.filter((topicId) => counts[topicId] > 0).length;
+};
+
+export const applyExploration = (
+  interest: InterestRecord,
+  topicId: TopicId,
+  focusTopicId: TopicId,
+): InterestRecord => {
+  if (!isTopicId(topicId)) throw new InvalidExplorationError();
+  if (topicId === focusTopicId) return interest;
+  return Object.fromEntries(
+    TOPIC_ORDER.map((id) => [id, interest[id] + (id === topicId ? 1 : 0)]),
+  ) as InterestRecord;
+};
+
+export const findExplorationCandidates = (
+  result: RecommendationResult,
+  cards: readonly ContentCard[],
+  focusTopicId: TopicId,
+): readonly ContentCard[] => {
+  const counts = countTopicCards(result.cards);
+  const selectedIds = new Set(result.cards.map((item) => item.id));
+  const seenProvidedIds = new Set<string>();
+  const canonicalCards = new Map(CARDS.map((item) => [item.id, item]));
+  const firstByTopic = new Map<TopicId, ContentCard>();
+  for (const candidate of cards) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    if (seenProvidedIds.has(candidate.id)) continue;
+    seenProvidedIds.add(candidate.id);
+    const canonical = canonicalCards.get(candidate.id);
+    if (!canonical || selectedIds.has(candidate.id) || !isSameCard(canonical, candidate)) continue;
+    if (!firstByTopic.has(canonical.topicId)) firstByTopic.set(canonical.topicId, candidate);
+  }
+  const orderedTopics = TOPIC_ORDER
+    .filter((topicId) => topicId !== focusTopicId)
+    .sort((left, right) => counts[left] - counts[right] || TOPIC_ORDER.indexOf(left) - TOPIC_ORDER.indexOf(right));
+
+  return orderedTopics.flatMap((topicId) => {
+    const candidate = firstByTopic.get(topicId);
+    return candidate ? [cloneCard(candidate)] : [];
+  });
 };
 
 const factualDistributionAnswer = (
@@ -267,14 +317,61 @@ const reduceExploration = (
   topicId: TopicId,
   result: RecommendationResult,
 ): ExperimentState => {
+  if (state.explorationResult) return withError(state, '탐색은 한 번만 기록할 수 있습니다.');
   if (state.stage !== 'exploration' || !state.focusTopicId) {
     return withError(state, '먼저 분포 확인을 완료해 주세요.');
+  }
+  let interest: InterestRecord;
+  try {
+    interest = applyExploration(state.interest, topicId, state.focusTopicId);
+  } catch (error) {
+    return withError(state, error instanceof InvalidExplorationError ? error.message : '탐색 주제가 올바르지 않습니다.');
   }
   if (topicId === state.focusTopicId) {
     return withError(state, '포커스가 아닌 주제를 한 번 탐색해 주세요.');
   }
-  if (state.explorationResult) return withError(state, '탐색은 한 번만 기록할 수 있습니다.');
-  return { ...state, stage: 'balance', explorationResult: cloneResult(result), lastError: null };
+  if (!state.changedResult) return withError(state, '먼저 다음 목록을 확인해 주세요.');
+
+  const sourceRequest = state.changedResult.request;
+  const expectedRequest = {
+    ...sourceRequest,
+    interest,
+    round: sourceRequest.round + 1,
+  };
+  const supply = SUPPLY_PROFILES.find((item) => item.id === expectedRequest.supplyProfileId);
+  if (!supply) return withError(state, '탐색 결과가 가상 규칙과 일치하지 않습니다.');
+
+  let expectedResult: RecommendationResult;
+  try {
+    expectedResult = recommend(expectedRequest, CARDS, supply);
+  } catch {
+    return withError(state, '탐색 결과가 가상 규칙과 일치하지 않습니다.');
+  }
+  if (!deepEqual(result, expectedResult)) {
+    return withError(state, '탐색 결과가 가상 규칙과 일치하지 않습니다.');
+  }
+  return {
+    ...state,
+    stage: 'balance',
+    interest,
+    explorationResult: cloneResult(expectedResult),
+    lastError: null,
+  };
+};
+
+const deepEqual = (left: unknown, right: unknown): boolean => {
+  if (Object.is(left, right)) return true;
+  if (typeof left !== 'object' || left === null || typeof right !== 'object' || right === null) return false;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    return left.every((item, index) => deepEqual(item, right[index]));
+  }
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord);
+  const rightKeys = Object.keys(rightRecord);
+  return leftKeys.length === rightKeys.length
+    && leftKeys.every((key) => Object.hasOwn(rightRecord, key) && deepEqual(leftRecord[key], rightRecord[key]));
 };
 
 export const canRunPrediction = (state: ExperimentState): boolean =>

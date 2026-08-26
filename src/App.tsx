@@ -1,27 +1,82 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AppShell } from './components/layout/AppShell';
+import { TopicBadge } from './components/common/TopicBadge';
 import { IntroScreen } from './features/intro/IntroScreen';
-import { experimentReducer, initialExperimentState, missionForStage, nextPracticeCard } from './domain/experimentState';
+import {
+  applyExploration,
+  experimentReducer,
+  initialExperimentState,
+  missionForStage,
+  nextPracticeCard,
+} from './domain/experimentState';
 import { RecommendationFeed } from './features/feed/RecommendationFeed';
 import { RuleTransparencyPanel } from './features/transparency/RuleTransparencyPanel';
 import { PredictionPanel } from './features/prediction/PredictionPanel';
 import { DistributionComparison } from './features/comparison/DistributionComparison';
+import { DistributionTable } from './features/comparison/DistributionTable';
+import { ExplorationPanel } from './features/exploration/ExplorationPanel';
 import { CARDS } from './data/cards';
 import { SUPPLY_PROFILES } from './data/supplyProfiles';
-import { TOPICS } from './data/topics';
+import { TOPIC_ORDER, TOPICS } from './data/topics';
 import { buildCardExplanation, recommend } from './domain/recommendationEngine';
-import { countTopicCards } from './domain/distribution';
+import { compareDistributions, countTopicCards } from './domain/distribution';
 import type { CardId, TopicId } from './domain/types';
 import type { PredictionAnswer } from './domain/experimentState';
+import type { RecommendationResult } from './domain/recommendationEngine';
 
 const balancedSupply = SUPPLY_PROFILES.find((supply) => supply.id === 'balanced') ?? (() => {
   throw new Error('균형 공급 프로필이 필요합니다.');
 })();
 const topicLabel = (topicId: TopicId): string => TOPICS.find((topic) => topic.id === topicId)?.label ?? topicId;
+const topicDefinition = (topicId: TopicId) => TOPICS.find((topic) => topic.id === topicId);
+
+interface ExplorationOutcomeProps {
+  before: RecommendationResult;
+  after: RecommendationResult;
+  focusTopicId: TopicId;
+}
+
+export function ExplorationOutcome({ before, after, focusTopicId }: ExplorationOutcomeProps): React.JSX.Element {
+  const delta = compareDistributions(countTopicCards(before.cards), countTopicCards(after.cards));
+  const exploredTopicId = TOPIC_ORDER.find(
+    (topicId) => after.request.interest[topicId] !== before.request.interest[topicId],
+  ) ?? focusTopicId;
+  const exploredTopic = topicDefinition(exploredTopicId);
+  if (!exploredTopic) throw new Error('탐색 결과 주제 정의가 올바르지 않습니다.');
+  const compositionChanged = TOPIC_ORDER.some((topicId) => delta.delta[topicId] !== 0);
+
+  return (
+    <section aria-labelledby="exploration-outcome-title">
+      <h3 id="exploration-outcome-title">탐색 결과</h3>
+      <p>{exploredTopic.label} 관심 토큰이 1개 추가되었습니다</p>
+      <DistributionTable delta={delta} />
+      {compositionChanged ? (
+        <p>추천 구성에 변화가 생겼습니다. 표에서 실제 카드 수 차이를 확인해 보세요.</p>
+      ) : (
+        <p>관심 토큰은 늘었지만 8장 배분 결과는 아직 같았습니다.</p>
+      )}
+      <p>한 번의 탐색이 균형을 자동으로 회복한다고 보장하지 않습니다.</p>
+      <h4>탐색 후 추천 목록</h4>
+      <ul aria-label="탐색 후 추천 목록">
+        {after.cards.map((card) => {
+          const topic = topicDefinition(card.topicId);
+          if (!topic) return null;
+          return (
+            <li key={card.id}>
+              <TopicBadge topic={topic} /> {card.title}
+            </li>
+          );
+        })}
+      </ul>
+      <p>다음 활동을 준비하고 있습니다.</p>
+    </section>
+  );
+}
 
 export default function App(): React.JSX.Element {
   const [state, dispatch] = useReducer(experimentReducer, undefined, initialExperimentState);
   const [announcement, setAnnouncement] = useState('');
+  const [actionError, setActionError] = useState('');
   const previousSelectionCount = useRef(0);
   const mission = missionForStage(state.stage);
 
@@ -82,6 +137,29 @@ export default function App(): React.JSX.Element {
     dispatch({ type: 'SUBMIT_PREDICTION', answer, result });
   };
 
+  const handleExplore = (topicId: TopicId): void => {
+    setActionError('');
+    if (!state.changedResult || !state.focusTopicId) {
+      setActionError('먼저 분포 확인을 완료해 주세요.');
+      return;
+    }
+    try {
+      const request = state.changedResult.request;
+      const interest = applyExploration(state.interest, topicId, state.focusTopicId);
+      const expectedRequest = {
+        ...request,
+        interest,
+        round: request.round + 1,
+      };
+      const supply = SUPPLY_PROFILES.find((item) => item.id === expectedRequest.supplyProfileId);
+      if (!supply) throw new Error('탐색 결과가 가상 규칙과 일치하지 않습니다.');
+      const result = recommend(expectedRequest, CARDS, supply);
+      dispatch({ type: 'RECORD_EXPLORATION', topicId, result });
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : '탐색 결과를 만들지 못했습니다.');
+    }
+  };
+
   return (
     <AppShell stage={state.stage} onReset={() => dispatch({ type: 'RESET' })}>
       {state.stage === 'intro' ? (
@@ -127,8 +205,21 @@ export default function App(): React.JSX.Element {
                 onCorrect={(answer) => dispatch({ type: 'SUBMIT_DISTRIBUTION', answer })}
               />
             </>
-          ) : state.stage === 'exploration' ? (
-            <p>미션 3. 탐색 버튼</p>
+          ) : state.stage === 'exploration' && state.changedResult && state.focusTopicId ? (
+            <>
+              {state.lastError || actionError ? <p role="alert">{state.lastError || actionError}</p> : null}
+              <ExplorationPanel
+                currentResult={state.changedResult}
+                focusTopicId={state.focusTopicId}
+                onExplore={handleExplore}
+              />
+            </>
+          ) : state.stage === 'balance' && state.changedResult && state.explorationResult && state.focusTopicId ? (
+            <ExplorationOutcome
+              before={state.changedResult}
+              after={state.explorationResult}
+              focusTopicId={state.focusTopicId}
+            />
           ) : (
             <p>다음 활동을 준비하고 있습니다.</p>
           )}

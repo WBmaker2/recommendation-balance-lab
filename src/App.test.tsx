@@ -1,14 +1,15 @@
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import App from './App';
+import App, { ExplorationOutcome } from './App';
 import { ResetExperimentButton } from './components/common/ResetExperimentButton';
 import { LEARNING_GOALS, MODEL_WARNING } from './data/learningCopy';
 import { MISSIONS } from './data/missions';
-import { TOPICS } from './data/topics';
+import { TOPIC_ORDER, TOPICS } from './data/topics';
 import { CARDS } from './data/cards';
 import { SUPPLY_PROFILES } from './data/supplyProfiles';
 import { recommend, type RecommendationResult } from './domain/recommendationEngine';
+import { countTopicCards } from './domain/distribution';
 import { DistributionComparison } from './features/comparison/DistributionComparison';
 
 afterEach(cleanup);
@@ -301,5 +302,79 @@ describe('미션 2: 추천 분포 전후 비교', () => {
     render(<DistributionComparison before={inconsistent} after={scienceHeavy} focusTopicId="science" onCorrect={vi.fn()} />);
     expect(document.getElementById('distribution-science-before')).toHaveTextContent('2장');
     expect(document.getElementById('distribution-science-before')).not.toHaveTextContent('8장');
+  });
+});
+
+describe('미션 3: 의도적인 주제 탐색', () => {
+  const openExploration = async (): Promise<{ user: ReturnType<typeof userEvent.setup>; focusTopic: string | null }> => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: '실험 시작' }));
+    const slot = screen.getAllByRole('article', { name: /추천 카드/ })[0];
+    const focusTopic = slot.getAttribute('data-topic-id');
+    for (let count = 0; count < 3; count += 1) await user.click(slot.querySelector<HTMLButtonElement>('button')!);
+    await user.click(screen.getAllByRole('radio', { name: '늘어난다' })[0]);
+    await user.click(screen.getAllByRole('radio', { name: '줄어든다' })[1]);
+    await user.click(screen.getByRole('button', { name: '다음 목록 예측' }));
+    await user.click(screen.getAllByRole('radio', { name: /^늘었다$/ })[0]);
+    await user.click(screen.getAllByRole('radio', { name: /^줄었다$/ })[1]);
+    await user.click(screen.getByRole('button', { name: '분포 문장 확인' }));
+    return { user, focusTopic };
+  };
+
+  it('후보를 최대 세 장만 보여 주고 한 번의 탐색 뒤 실제 결과와 한계를 공개한다', async () => {
+    const { user, focusTopic } = await openExploration();
+    expect(screen.getByRole('heading', { name: '미션 3. 탐색 버튼' })).toBeInTheDocument();
+    expect(screen.getByText('이 선택은 실제 취향이 아니라 가상 모형을 시험하는 행동입니다.')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: '낯선 주제 열기' })).toHaveLength(3);
+    for (const candidate of screen.getAllByRole('article', { name: /탐색 카드/ })) {
+      expect(candidate.getAttribute('data-topic-id')).not.toBe(focusTopic);
+    }
+
+    await user.click(screen.getAllByRole('button', { name: '낯선 주제 열기' })[0]);
+    expect(screen.getByRole('heading', { name: '미션 4. 균형 조정' })).toBeInTheDocument();
+    expect(screen.getByText('역사 관심 토큰이 1개 추가되었습니다')).toBeInTheDocument();
+    const outcomeTable = screen.getByRole('table', { name: '추천 주제 분포 전후 비교' });
+    expect(outcomeTable).toBeInTheDocument();
+    expect(outcomeTable).toHaveTextContent(/[+-]\d장/);
+    expect(screen.getByText('한 번의 탐색이 균형을 자동으로 회복한다고 보장하지 않습니다.')).toBeInTheDocument();
+    const outcomeList = screen.getByRole('list', { name: '탐색 후 추천 목록' });
+    expect(within(outcomeList).getAllByRole('listitem')).toHaveLength(8);
+    expect(screen.queryByRole('button', { name: '낯선 주제 열기' })).not.toBeInTheDocument();
+  });
+
+  it('실제 카드 수가 같으면 토큰 증가가 같은 8장 배분을 숨기지 않는다', () => {
+    const balanced = SUPPLY_PROFILES.find((profile) => profile.id === 'balanced')!;
+    let before: RecommendationResult | undefined;
+    let after: RecommendationResult | undefined;
+    for (let seed = 0; seed < 1024 && !after; seed += 1) {
+      let remaining = seed;
+      const baseInterest = Object.fromEntries(TOPIC_ORDER.map((topicId) => {
+        const value = remaining % 4;
+        remaining = Math.floor(remaining / 4);
+        return [topicId, value];
+      })) as Record<(typeof TOPIC_ORDER)[number], number>;
+      for (const topicId of TOPIC_ORDER) {
+        const candidateBefore = recommend({
+          interest: baseInterest,
+          diversityLevel: 0, memoryMode: 'keep', supplyProfileId: 'balanced', round: seed % 8, feedSize: 8,
+        }, CARDS, balanced);
+        const candidateAfter = recommend({
+          ...candidateBefore.request,
+          interest: { ...baseInterest, [topicId]: baseInterest[topicId] + 1 },
+          round: candidateBefore.request.round + 1,
+        }, CARDS, balanced);
+        if (JSON.stringify(countTopicCards(candidateAfter.cards)) === JSON.stringify(countTopicCards(candidateBefore.cards))) {
+          before = candidateBefore;
+          after = candidateAfter;
+          break;
+        }
+      }
+    }
+    expect(before).toBeDefined();
+    expect(after).toBeDefined();
+    if (!before || !after) return;
+    render(<ExplorationOutcome before={before} after={after} focusTopicId="science" />);
+    expect(screen.getByText('관심 토큰은 늘었지만 8장 배분 결과는 아직 같았습니다.')).toBeInTheDocument();
   });
 });

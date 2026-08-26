@@ -39,7 +39,14 @@ describe('model report controls', () => {
     expect(screen.getByRole('heading', { name: '실험 완료' })).toBeInTheDocument();
     for (const goal of LEARNING_GOALS) expect(screen.getByText(goal)).toBeInTheDocument();
     expect(screen.getByText(MODEL_WARNING)).toBeInTheDocument();
-    expect(screen.getByText(/새로운 주제를 찾기/)).toBeInTheDocument();
+    const sentence = screen.getByText(/새로운 주제를 찾기/);
+    expect(sentence).toHaveTextContent(/scenario-a/);
+    expect(sentence).toHaveTextContent(/다양성 토큰 0/);
+    expect(sentence).toHaveTextContent(/관심 기록 유지/);
+    expect(sentence).toHaveTextContent(/나타난 주제 수/);
+    expect(sentence).toHaveTextContent(/5/);
+    expect(sentence).toHaveTextContent(/선택 기록·균형 설정·콘텐츠 공급/);
+    expect(sentence).toHaveTextContent(MODEL_WARNING);
     expect(screen.getByRole('button', { name: '새 실험 시작' })).toBeInTheDocument();
     expect(screen.getAllByRole('button')).toHaveLength(1);
   });

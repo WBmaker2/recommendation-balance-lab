@@ -5,7 +5,7 @@ import { PURPOSE_LABELS } from '../data/learningCopy';
 import { TOPIC_ORDER } from '../data/topics';
 import { compareDistributions, countTopicCards } from './distribution';
 import { createBalancePreview, saveBalanceSnapshot, type BalanceSnapshot } from './balanceScenarios';
-import { assessReport, emptyReportDraft, type ReportDraft } from './reportAssessment';
+import { assessReport, buildReportSentence, emptyReportDraft, type ReportDraft } from './reportAssessment';
 import { recommend } from './recommendationEngine';
 import type { InfluenceFactor, LearningPurpose, TopicId } from './types';
 
@@ -114,5 +114,40 @@ describe('evidence-based model report assessment', () => {
     expect(first).toEqual(second);
     expect(first).not.toBe(second);
     expect(first.acknowledgedFactors).not.toBe(second.acknowledgedFactors);
+  });
+
+  it('rejects accessor and non-enumerable properties across report evidence', () => {
+    const draft = validDraft(snapshots[0], 'discover');
+    const getterDraft = { ...draft } as Record<string, unknown>;
+    Object.defineProperty(getterDraft, 'focusDirection', { enumerable: true, get: () => 'increase' });
+    expect(assessReport(getterDraft as never, delta, snapshots, allFactors).complete).toBe(false);
+    const hiddenDraft = { ...draft } as Record<string, unknown>;
+    Object.defineProperty(hiddenDraft, 'purpose', { enumerable: false, value: 'discover' });
+    expect(assessReport(hiddenDraft as never, delta, snapshots, allFactors).complete).toBe(false);
+
+    const getterDelta = { ...delta } as Record<string, unknown>;
+    Object.defineProperty(getterDelta, 'delta', { enumerable: true, get: () => delta.delta });
+    expect(assessReport(draft, getterDelta as never, snapshots, allFactors).complete).toBe(false);
+    const hiddenSnapshots = snapshots.map((snapshot) => ({ ...snapshot })) as typeof snapshots;
+    Object.defineProperty(hiddenSnapshots[0], 'config', { enumerable: false, value: snapshots[0].config });
+    expect(assessReport(draft, delta, hiddenSnapshots, allFactors).complete).toBe(false);
+
+    const accessorFactors = [...allFactors] as InfluenceFactor[];
+    Object.defineProperty(accessorFactors, '0', { enumerable: true, get: () => 'choice-record' });
+    expect(assessReport(draft, delta, snapshots, accessorFactors).complete).toBe(false);
+  });
+
+  it('generates a factual sentence with purpose, configuration, metric, factors, and warning only', () => {
+    const draft = validDraft(snapshots[0], 'discover', 'topic-variety');
+    const sentence = buildReportSentence(draft, { distributionDelta: delta, snapshots, completedFactors: allFactors });
+    expect(sentence).toContain('새로운 주제를 찾기');
+    expect(sentence).toContain('scenario-a');
+    expect(sentence).toContain('다양성 토큰 0');
+    expect(sentence).toContain('관심 기록 유지');
+    expect(sentence).toContain('나타난 주제 수');
+    expect(sentence).toContain(String(draft.evidenceValue));
+    expect(sentence).toContain('선택 기록·균형 설정·콘텐츠 공급');
+    expect(sentence).toContain('가상의 단순 규칙이며 실제 서비스 추천을 판정하지 않습니다');
+    expect(sentence).not.toMatch(/이름|계정|학생|공유|다운로드|점수|순위|최고|공정/);
   });
 });

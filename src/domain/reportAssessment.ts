@@ -2,6 +2,7 @@ import { LEARNING_GOALS, MODEL_WARNING, PURPOSE_LABELS } from '../data/learningC
 import { TOPIC_ORDER, TOPICS } from '../data/topics';
 import { canCompareBalance, type BalanceSnapshot } from './balanceScenarios';
 import { countTopicCards, type DistributionDelta } from './distribution';
+import { isSafeReportEvidenceGraph } from './reportEvidenceValidation';
 import type { InfluenceFactor, LearningPurpose, TopicId } from './types';
 
 export type EvidenceMetric = 'focus-card-count' | 'topic-variety';
@@ -62,10 +63,15 @@ const hasExactKeys = (value: unknown, keys: readonly string[]): value is Record<
     const ownKeys = Reflect.ownKeys(value);
     return ownKeys.length === keys.length
       && ownKeys.every((key) => typeof key === 'string' && keys.includes(key))
-      && keys.every((key) => hasOwn(value, key));
+      && keys.every((key) => hasOwn(value, key) && isEnumerableDataProperty(value, key));
   } catch {
     return false;
   }
+};
+
+const isEnumerableDataProperty = (value: object, key: PropertyKey): boolean => {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  return Boolean(descriptor?.enumerable && 'value' in descriptor);
 };
 
 const isDenseArray = (value: unknown): value is readonly unknown[] => {
@@ -216,7 +222,8 @@ export const assessReport = (
   completedFactors: readonly InfluenceFactor[],
 ): ReportAssessment => {
   try {
-    if (!validDraft(draft) || !validDelta(distributionDelta) || !validFactors(completedFactors)
+    if (!isSafeReportEvidenceGraph([draft, distributionDelta, snapshots, completedFactors])
+      || !validDraft(draft) || !validDelta(distributionDelta) || !validFactors(completedFactors)
       || !isDenseArray(snapshots) || snapshots.length !== 3 || !canCompareBalance(snapshots)) return failedAssessment();
     const focusTopicId = focusTopicFromDelta(distributionDelta);
     if (!focusTopicId) return failedAssessment();

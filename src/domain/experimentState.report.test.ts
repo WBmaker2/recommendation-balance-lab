@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { CARDS } from '../data/cards';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
-import { buildAuditPair } from './auditComparison';
+import { buildAuditPair, cloneAuditPair } from './auditComparison';
 import { createBalancePreview, saveBalanceSnapshot, type BalanceSnapshot } from './balanceScenarios';
 import { compareDistributions, countTopicCards } from './distribution';
 import { assessReport, emptyReportDraft, type ReportAssessment } from './reportAssessment';
 import { experimentReducer, initialExperimentState, type ExperimentState } from './experimentState';
 import { recommend } from './recommendationEngine';
+import { cloneRecommendationResult } from './recommendationResult';
 
 const balanced = SUPPLY_PROFILES.find((profile) => profile.id === 'balanced')!;
 const changed = recommend({ interest: { science: 3, art: 0, sports: 0, nature: 0, history: 0 }, diversityLevel: 0, memoryMode: 'keep', supplyProfileId: 'balanced', round: 1, feedSize: 8 }, CARDS, balanced);
+const exploration = recommend({ ...changed.request, interest: { science: 3, art: 0, sports: 0, nature: 1, history: 0 }, round: 2 }, CARDS, balanced);
 
 const snapshotsFor = (): readonly BalanceSnapshot[] => {
   let saved: readonly BalanceSnapshot[] = [];
@@ -18,7 +20,7 @@ const snapshotsFor = (): readonly BalanceSnapshot[] => {
     { diversityLevel: 1 as const, memoryMode: 'keep' as const },
     { diversityLevel: 2 as const, memoryMode: 'clear' as const },
   ].entries()) {
-    const result = createBalancePreview(changed.request, config, CARDS, balanced);
+    const result = createBalancePreview(exploration.request, config, CARDS, balanced);
     const next = saveBalanceSnapshot(saved, config, result);
     if (!next.ok) throw new Error(`snapshot ${index} failed`);
     saved = next.snapshots;
@@ -33,18 +35,20 @@ const reportReadyState = (): ExperimentState => {
   return {
     ...base,
     stage: 'report',
-    changedResult: changed,
+    changedResult: cloneRecommendationResult(changed),
+    explorationResult: cloneRecommendationResult(exploration),
     focusTopicId: 'science',
-    interest: { science: 3, art: 0, sports: 0, nature: 0, history: 0 },
+    interest: { science: 3, art: 0, sports: 0, nature: 1, history: 0 },
     selectionHistory: [
       { cardId: 'science-1', topicId: 'science', ordinal: 1 },
       { cardId: 'science-2', topicId: 'science', ordinal: 2 },
       { cardId: 'science-3', topicId: 'science', ordinal: 3 },
     ],
+    prediction: { focusDirection: 'increase', varietyDirection: 'decrease' },
     distributionAnswer: { focusDirection: 'increase', varietyDirection: 'decrease' },
     balanceSnapshots: snapshots,
     balanceCompared: true,
-    auditPair,
+    auditPair: cloneAuditPair(auditPair),
     auditAnswer: 'supply-condition',
     reportDraft: {
       ...emptyReportDraft(),

@@ -238,4 +238,75 @@ describe('balance scenario previews', () => {
     const duplicate = saveBalanceSnapshot(snapshots, configs[0], createBalancePreview(scienceThreePlusHistoryRequest, configs[0], CARDS, balanced));
     expect(duplicate).toEqual({ ok: false, reason: 'duplicate-config' });
   });
+
+  it('rejects non-enumerable and Symbol keys on result arrays and objects', () => {
+    const config = { diversityLevel: 0, memoryMode: 'keep' } as const;
+    const valid = createBalancePreview(scienceThreePlusHistoryRequest, config, CARDS, balanced);
+    const cardsWithExtra = [...valid.cards] as Array<typeof valid.cards[number]>;
+    Object.defineProperty(cardsWithExtra, 'extra', { value: true });
+    const cardsWithSymbol = [...valid.cards] as Array<typeof valid.cards[number]>;
+    Object.defineProperty(cardsWithSymbol, Symbol('extra'), { value: true });
+    const explanationsWithExtra = [...valid.explanations] as Array<typeof valid.explanations[number]>;
+    Object.defineProperty(explanationsWithExtra, 'extra', { value: true });
+    const explanationsWithSymbol = [...valid.explanations] as Array<typeof valid.explanations[number]>;
+    Object.defineProperty(explanationsWithSymbol, Symbol('extra'), { value: true });
+    const resultExtra = { ...valid };
+    Object.defineProperty(resultExtra, 'extra', { value: true });
+    const resultSymbol = { ...valid };
+    Object.defineProperty(resultSymbol, Symbol('extra'), { value: true });
+    const malformed = [
+      { ...valid, cards: cardsWithExtra },
+      { ...valid, cards: cardsWithSymbol },
+      { ...valid, explanations: explanationsWithExtra },
+      { ...valid, explanations: explanationsWithSymbol },
+      resultExtra,
+      resultSymbol,
+    ];
+    for (const result of malformed) {
+      expect(isValidRecommendationResult(result)).toBe(false);
+      expect(() => saveBalanceSnapshot([], config, result as never)).toThrowError(
+        expect.objectContaining({ name: 'InvalidBalanceSnapshotError' }),
+      );
+    }
+  });
+
+  it('rejects non-enumerable and Symbol keys on existing snapshot arrays and shapes', () => {
+    const configs = [
+      { diversityLevel: 0, memoryMode: 'keep' },
+      { diversityLevel: 1, memoryMode: 'keep' },
+      { diversityLevel: 2, memoryMode: 'keep' },
+    ] as const;
+    let snapshots = [] as readonly import('./balanceScenarios').BalanceSnapshot[];
+    for (const item of configs) {
+      const saved = saveBalanceSnapshot(snapshots, item, createBalancePreview(scienceThreePlusHistoryRequest, item, CARDS, balanced));
+      if (saved.ok) snapshots = saved.snapshots;
+    }
+    const arrayExtra = [...snapshots] as Array<typeof snapshots[number]>;
+    Object.defineProperty(arrayExtra, 'extra', { value: true });
+    const arraySymbol = [...snapshots] as Array<typeof snapshots[number]>;
+    Object.defineProperty(arraySymbol, Symbol('extra'), { value: true });
+    expect(canCompareBalance(arrayExtra)).toBe(false);
+    expect(canCompareBalance(arraySymbol)).toBe(false);
+    const next = createBalancePreview(scienceThreePlusHistoryRequest, { diversityLevel: 0, memoryMode: 'clear' }, CARDS, balanced);
+    expect(() => saveBalanceSnapshot(arrayExtra, { diversityLevel: 0, memoryMode: 'clear' }, next)).toThrowError(InvalidBalanceSnapshotError);
+    expect(() => saveBalanceSnapshot(arraySymbol, { diversityLevel: 0, memoryMode: 'clear' }, next)).toThrowError(InvalidBalanceSnapshotError);
+    const snapshotExtra = { ...snapshots[0] };
+    Object.defineProperty(snapshotExtra, 'extra', { value: true });
+    const snapshotSymbol = { ...snapshots[0] };
+    Object.defineProperty(snapshotSymbol, Symbol('extra'), { value: true });
+    const configExtra = { ...snapshots[0].config };
+    Object.defineProperty(configExtra, 'extra', { value: true });
+    const configSymbol = { ...snapshots[0].config };
+    Object.defineProperty(configSymbol, Symbol('extra'), { value: true });
+    const resultExtra = { ...snapshots[0].result };
+    Object.defineProperty(resultExtra, Symbol('extra'), { value: true });
+    expect(canCompareBalance([snapshotExtra as never, snapshots[1], snapshots[2]])).toBe(false);
+    expect(canCompareBalance([snapshotSymbol as never, snapshots[1], snapshots[2]])).toBe(false);
+    expect(canCompareBalance([{ ...snapshots[0], config: configExtra }, snapshots[1], snapshots[2]])).toBe(false);
+    expect(canCompareBalance([{ ...snapshots[0], config: configSymbol }, snapshots[1], snapshots[2]])).toBe(false);
+    expect(canCompareBalance([{ ...snapshots[0], result: resultExtra }, snapshots[1], snapshots[2]])).toBe(false);
+    expect(() => saveBalanceSnapshot([snapshotExtra as never], { diversityLevel: 0, memoryMode: 'clear' }, next)).toThrowError(InvalidBalanceSnapshotError);
+    expect(() => saveBalanceSnapshot([{ ...snapshots[0], config: configExtra }], { diversityLevel: 0, memoryMode: 'clear' }, next)).toThrowError(InvalidBalanceSnapshotError);
+    expect(() => saveBalanceSnapshot([{ ...snapshots[0], result: resultExtra }], { diversityLevel: 0, memoryMode: 'clear' }, next)).toThrowError(InvalidBalanceSnapshotError);
+  });
 });

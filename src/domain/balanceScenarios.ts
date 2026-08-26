@@ -42,12 +42,17 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
     return false;
   }
 };
+const hasExactOwnStringKeys = (value: Record<string, unknown>, required: readonly string[]): boolean => {
+  const keys = Reflect.ownKeys(value);
+  return keys.length === required.length
+    && keys.every((key) => typeof key === 'string' && required.includes(key))
+    && required.every((key) => Object.hasOwn(value, key));
+};
 const isBalanceConfig = (value: unknown): value is BalanceConfig => {
   try {
     if (!isPlainObject(value)) return false;
     const config = value as Partial<BalanceConfig>;
-    const keys = Object.keys(config);
-    return keys.length === 2 && keys.includes('diversityLevel') && keys.includes('memoryMode')
+    return hasExactOwnStringKeys(config, ['diversityLevel', 'memoryMode'])
       && isDiversityLevel(config.diversityLevel) && isMemoryMode(config.memoryMode);
   } catch {
     return false;
@@ -77,8 +82,7 @@ const isSnapshotShape = (value: unknown): value is BalanceSnapshot => {
   try {
     if (!isPlainObject(value)) return false;
     const snapshot = value as Partial<BalanceSnapshot>;
-    const keys = Object.keys(snapshot);
-    if (keys.length !== 3 || !keys.includes('id') || !keys.includes('config') || !keys.includes('result')) return false;
+    if (!hasExactOwnStringKeys(snapshot, ['id', 'config', 'result'])) return false;
     return (snapshot.id === 'scenario-a' || snapshot.id === 'scenario-b' || snapshot.id === 'scenario-c')
       && isBalanceConfig(snapshot.config)
       && isValidRecommendationResult(snapshot.result)

@@ -9,12 +9,13 @@ const cloneCard = (card: ContentCard): ContentCard => ({ ...card });
 export const isDenseArray = (value: unknown): value is readonly unknown[] => {
   try {
     if (!Array.isArray(value)) return false;
-    const keys = Object.keys(value);
-    if (keys.length !== value.length) return false;
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.length !== value.length + 1) return false;
     for (let index = 0; index < value.length; index += 1) {
       if (!Object.hasOwn(value, index) || !Object.hasOwn(value, String(index))) return false;
     }
-    return keys.every((key, index) => key === String(index));
+    const expectedKeys = new Set(['length', ...Array.from({ length: value.length }, (_item, index) => String(index))]);
+    return ownKeys.every((key) => typeof key === 'string' && expectedKeys.has(key));
   } catch {
     return false;
   }
@@ -43,10 +44,11 @@ const deepEqual = (a: unknown, b: unknown): boolean => {
   }
   const aRecord = a as Record<string, unknown>;
   const bRecord = b as Record<string, unknown>;
-  const aKeys = Object.keys(aRecord);
-  const bKeys = Object.keys(bRecord);
+  if (Object.getPrototypeOf(aRecord) !== Object.prototype || Object.getPrototypeOf(bRecord) !== Object.prototype) return false;
+  const aKeys = Reflect.ownKeys(aRecord);
+  const bKeys = Reflect.ownKeys(bRecord);
   return aKeys.length === bKeys.length
-    && aKeys.every((key) => Object.hasOwn(bRecord, key) && deepEqual(aRecord[key], bRecord[key]));
+    && aKeys.every((key) => Object.hasOwn(bRecord, key) && deepEqual(aRecord[key as string], bRecord[key as string]));
 };
 
 export const recommendationResultsEqual = (left: RecommendationResult, right: RecommendationResult): boolean => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface ResetExperimentButtonProps {
   onReset(): void;
@@ -6,15 +6,26 @@ interface ResetExperimentButtonProps {
 
 export function ResetExperimentButton({ onReset }: ResetExperimentButtonProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const confirmGuard = useRef(false);
+
+  const openDialog = (): void => {
+    confirmGuard.current = false;
+    setIsConfirming(false);
+    setIsOpen(true);
+  };
 
   const confirmReset = (): void => {
+    if (confirmGuard.current) return;
+    confirmGuard.current = true;
+    setIsConfirming(true);
     setIsOpen(false);
     onReset();
   };
 
   return (
     <>
-      <button type="button" onClick={() => setIsOpen(true)}>
+      <button type="button" onClick={openDialog}>
         기록 지우기
       </button>
       {isOpen ? (
@@ -29,7 +40,7 @@ export function ResetExperimentButton({ onReset }: ResetExperimentButtonProps): 
           <button type="button" onClick={() => setIsOpen(false)}>
             취소
           </button>
-          <button type="button" onClick={confirmReset}>
+          <button type="button" disabled={isConfirming} onClick={confirmReset}>
             기록을 지우고 처음으로
           </button>
         </div>

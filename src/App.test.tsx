@@ -1,7 +1,8 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { ResetExperimentButton } from './components/common/ResetExperimentButton';
 import { LEARNING_GOALS, MODEL_WARNING } from './data/learningCopy';
 import { MISSIONS } from './data/missions';
 import { TOPICS } from './data/topics';
@@ -80,5 +81,30 @@ describe('추천 알고리즘 균형 실험실 시작 화면', () => {
     expect(screen.getByRole('button', { name: '실험 시작' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '기록 지우기' })).not.toBeInTheDocument();
     expect(screen.getByText(MODEL_WARNING)).toBeInTheDocument();
+  });
+
+  it('같은 확인 버튼을 동기적으로 두 번 눌러도 초기화 callback은 한 번만 호출한다', async () => {
+    const user = userEvent.setup();
+    const onReset = vi.fn();
+    render(<ResetExperimentButton onReset={onReset} />);
+
+    await user.click(screen.getByRole('button', { name: '기록 지우기' }));
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(onReset).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: '기록 지우기' }));
+    const confirmButton = screen.getByRole('button', { name: '기록을 지우고 처음으로' });
+
+    act(() => {
+      confirmButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      confirmButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(onReset).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '기록 지우기' }));
+    await user.click(screen.getByRole('button', { name: '기록을 지우고 처음으로' }));
+    expect(onReset).toHaveBeenCalledTimes(2);
   });
 });

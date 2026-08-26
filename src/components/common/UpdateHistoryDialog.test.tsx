@@ -35,6 +35,7 @@ describe('업데이트 내역 dialog', () => {
   it('exports truthful ISO entries in chronological order', () => {
     expect(UPDATE_HISTORY[0]).toEqual({ date: '2026-08-26', category: '설계', summary: '최초 설계 문서 작성' });
     expect(UPDATE_HISTORY[1]).toEqual({ date: '2026-08-27', category: '개발', summary: 'MVP 구현과 디지털 시민성·접근성 검수' });
+    expect(UPDATE_HISTORY[2]).toEqual({ date: '2026-08-27', category: '개선', summary: '네이티브 Escape 닫기 경로와 닫힘 후 포커스 복원을 단일화' });
     expect(UPDATE_HISTORY.every((entry) => /^\d{4}-\d{2}-\d{2}$/.test(entry.date))).toBe(true);
     expect([...UPDATE_HISTORY].sort((left, right) => left.date.localeCompare(right.date))).toEqual(UPDATE_HISTORY);
   });
@@ -48,7 +49,7 @@ describe('업데이트 내역 dialog', () => {
     const dialog = screen.getByRole('dialog', { name: '업데이트 내역' }) as HTMLDialogElement;
     expect(dialog).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '업데이트 내역' })).toBeInTheDocument();
-    expect([...dialog.querySelectorAll('time')].map((time) => time.dateTime)).toEqual(['2026-08-26', '2026-08-27']);
+    expect([...dialog.querySelectorAll('time')].map((time) => time.dateTime)).toEqual(['2026-08-26', '2026-08-27', '2026-08-27']);
     expect(screen.getByRole('button', { name: '닫기' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '닫기' }));

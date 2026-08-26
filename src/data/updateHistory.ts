@@ -9,4 +9,5 @@ export interface UpdateEntry {
 export const UPDATE_HISTORY: readonly UpdateEntry[] = [
   { date: '2026-08-26', category: '설계', summary: '최초 설계 문서 작성' },
   { date: '2026-08-27', category: '개발', summary: 'MVP 구현과 디지털 시민성·접근성 검수' },
+  { date: '2026-08-27', category: '개선', summary: '네이티브 Escape 닫기 경로와 닫힘 후 포커스 복원을 단일화' },
 ] as const;

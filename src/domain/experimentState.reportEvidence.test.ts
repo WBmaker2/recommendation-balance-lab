@@ -85,4 +85,18 @@ describe('report evidence is bound to the current experiment chain', () => {
     expect(completedFactorsForState(unrelated)).not.toContain('balance-setting');
     expect(experimentReducer(unrelated, { type: 'COMPLETE_REPORT', assessment: { complete: true } as never }).stage).toBe('report');
   });
+
+  it.each([
+    ['an enumerable extra key', (interest: Record<string, unknown>) => { interest.extra = 1; }],
+    ['a symbol key', (interest: Record<string, unknown>) => { Object.defineProperty(interest, Symbol('extra'), { value: 1, enumerable: true }); }],
+    ['a non-enumerable key', (interest: Record<string, unknown>) => { Object.defineProperty(interest, 'extra', { value: 1, enumerable: false }); }],
+    ['a required topic accessor', (interest: Record<string, unknown>) => { Object.defineProperty(interest, 'science', { get: () => 3, enumerable: true }); }],
+  ])('rejects balance evidence with %s in state interest', (_label, mutate) => {
+    const state = readyState();
+    const interest = { ...state.interest } as Record<string, unknown>;
+    mutate(interest);
+    const malformed = { ...state, interest } as ExperimentState;
+    expect(completedFactorsForState(malformed)).not.toContain('balance-setting');
+    expect(experimentReducer(malformed, { type: 'COMPLETE_REPORT', assessment: { complete: true } as never }).stage).toBe('report');
+  });
 });

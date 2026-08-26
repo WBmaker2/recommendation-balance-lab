@@ -1,5 +1,7 @@
 import { CARDS } from '../data/cards';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
+import { TOPIC_ORDER } from '../data/topics';
+import type { InterestRecord } from './types';
 
 const isObject = (value: unknown): value is object => typeof value === 'object' && value !== null;
 
@@ -25,6 +27,24 @@ const collectGlobalObjects = (): WeakSet<object> => {
 const isDataProperty = (value: object, key: PropertyKey, enumerable: boolean): boolean => {
   const descriptor = Object.getOwnPropertyDescriptor(value, key);
   return Boolean(descriptor && descriptor.enumerable === enumerable && 'value' in descriptor);
+};
+
+/** Validates the reducer's interest record before any recommendation normalizes it. */
+export const isExactInterestRecord = (value: unknown): value is InterestRecord => {
+  try {
+    if (!isObject(value) || Object.getPrototypeOf(value) !== Object.prototype) return false;
+    const keys = Reflect.ownKeys(value);
+    if (keys.length !== TOPIC_ORDER.length || keys.some((key) => typeof key !== 'string' || !TOPIC_ORDER.includes(key as typeof TOPIC_ORDER[number]))) return false;
+    return TOPIC_ORDER.every((topicId) => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, topicId);
+      return Boolean(descriptor && descriptor.enumerable && 'value' in descriptor)
+        && Number.isFinite(descriptor!.value)
+        && Number.isInteger(descriptor!.value)
+        && descriptor!.value >= 0;
+    });
+  } catch {
+    return false;
+  }
 };
 
 const visitArray = (value: readonly unknown[], visit: (item: unknown) => boolean): boolean => {

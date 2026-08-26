@@ -4,7 +4,7 @@ import { TOPIC_ORDER } from '../data/topics';
 import { auditPairsEqual, buildAuditPair, validateAuditPair, type AuditPair } from './auditComparison';
 import { canCompareBalance, createBalancePreview } from './balanceScenarios';
 import { compareDistributions, countTopicCards, isDistributionAnswerCorrect, type DistributionDelta } from './distribution';
-import { isSafeReportEvidenceGraph } from './reportEvidenceValidation';
+import { isExactInterestRecord, isSafeReportEvidenceGraph } from './reportEvidenceValidation';
 import { recommendationResultsEqual } from './recommendationResult';
 import { recommend, type RecommendationResult } from './recommendationEngine';
 import type { ExperimentState } from './experimentState';
@@ -106,6 +106,7 @@ const balanceEvidence = (state: ExperimentState, delta: DistributionDelta | null
   try {
     if (!delta || !state.changedResult || !state.explorationResult || !state.balanceCompared
       || !validFocus(delta) || state.focusTopicId !== validFocus(delta)
+      || !isExactInterestRecord(state.interest)
       || !isSafeReportEvidenceGraph([state.changedResult, state.explorationResult, state.interest, state.balanceSnapshots])) return false;
     const focus = validFocus(delta)!;
     if (!exactChangedResult(state.changedResult, focus)) return false;

@@ -1,0 +1,15 @@
+import type { TopicDefinition } from '../../domain/types';
+
+export interface TopicBadgeProps {
+  topic: TopicDefinition;
+  decorativeIcon?: boolean;
+}
+
+export function TopicBadge({ topic, decorativeIcon = false }: TopicBadgeProps): React.JSX.Element {
+  return (
+    <span data-pattern={topic.pattern}>
+      <span aria-hidden={decorativeIcon}>{topic.icon}</span>
+      <span>{topic.label}</span>
+    </span>
+  );
+}

@@ -458,4 +458,22 @@ describe('교실용 시각 체계와 모션 대체', () => {
     expect(screen.getByText('지금 할 차례')).toBeVisible();
     expect(screen.getByRole('table', { name: '추천 주제 분포 전후 비교' })).toBeVisible();
   });
+
+  it('reduced motion replaces required-action pulse with a static outlined label', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: () => ({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined }) });
+    const user = userEvent.setup();
+    render(<PredictionPanel focusTopicId="science" selectionCount={3} onSubmit={vi.fn()} />);
+    await user.click(screen.getAllByRole('radio', { name: '늘어난다' })[0]);
+    await user.click(screen.getAllByRole('radio', { name: '줄어든다' })[1]);
+    expect(screen.getByRole('button', { name: '다음 목록 예측' })).not.toHaveClass('gi-pulse');
+    expect(screen.getByText('지금 할 차례')).toHaveClass('motion-static-label');
+    cleanup();
+    render(<BalanceControlPanel config={{ diversityLevel: 2, memoryMode: 'keep' }} snapshots={visualSnapshots} onConfigChange={vi.fn()} onSave={vi.fn()} onCompare={vi.fn()} />);
+    expect(screen.getByRole('button', { name: '균형 비교' })).not.toHaveClass('gi-pulse');
+    expect(screen.getByText('지금 할 차례')).toHaveClass('motion-static-label');
+    cleanup();
+    if (original) Object.defineProperty(window, 'matchMedia', original);
+    else Reflect.deleteProperty(window, 'matchMedia');
+  });
 });

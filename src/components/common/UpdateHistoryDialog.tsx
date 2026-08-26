@@ -74,7 +74,7 @@ export function UpdateHistoryDialog({ entries }: UpdateHistoryDialogProps): Reac
         <p id="update-history-description">앱의 설계와 개발 변경 사항을 날짜순으로 공개합니다.</p>
         <ol>
           {entries.map((entry) => (
-            <li key={`${entry.date}-${entry.category}`}>
+            <li key={`${entry.date}-${entry.category}-${entry.summary}`}>
               <time dateTime={entry.date}>{entry.date}</time>{' '}
               <span>{entry.category}</span>{' '}
               <span>{entry.summary}</span>

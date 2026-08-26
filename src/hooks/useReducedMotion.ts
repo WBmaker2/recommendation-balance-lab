@@ -23,8 +23,12 @@ export function useReducedMotion(): boolean {
       return undefined;
     }
     const update = (event: MediaQueryListEvent): void => setReduced(event.matches);
-    if (typeof media.addEventListener === 'function') media.addEventListener('change', update);
-    else if (typeof media.addListener === 'function') media.addListener(update);
+    try {
+      if (typeof media.addEventListener === 'function') media.addEventListener('change', update);
+      else if (typeof media.addListener === 'function') media.addListener(update);
+    } catch {
+      return undefined;
+    }
     return () => {
       if (typeof media.removeEventListener === 'function') media.removeEventListener('change', update);
       else if (typeof media.removeListener === 'function') media.removeListener(update);

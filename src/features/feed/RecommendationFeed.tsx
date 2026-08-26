@@ -4,6 +4,8 @@ import { WhyThisCardDialog } from '../transparency/WhyThisCardDialog';
 import { TOPICS } from '../../data/topics';
 import type { CardId, TopicId } from '../../domain/types';
 import type { RecommendationExplanation, RecommendationResult } from '../../domain/recommendationEngine';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { FeedTransition } from './FeedTransition';
 
 export interface RecommendationFeedProps {
   result: RecommendationResult;
@@ -21,6 +23,8 @@ export function RecommendationFeed({
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const focusSlot = useRef<number | null>(null);
   const [activeExplanation, setActiveExplanation] = useState<RecommendationExplanation | null>(null);
+  const [transitionBefore, setTransitionBefore] = useState<RecommendationResult | null>(null);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (focusSlot.current === null) return;
@@ -30,6 +34,7 @@ export function RecommendationFeed({
 
   const chooseCard = (slot: number, cardId: CardId): void => {
     focusSlot.current = slot;
+    setTransitionBefore(result);
     onSelect(cardId);
   };
 
@@ -58,6 +63,9 @@ export function RecommendationFeed({
           );
         })}
       </div>
+      {transitionBefore && transitionBefore.inputFingerprint !== result.inputFingerprint ? (
+        <FeedTransition before={transitionBefore} after={result} reducedMotion={reducedMotion} />
+      ) : null}
       {activeExplanation ? (
         <WhyThisCardDialog
           explanation={activeExplanation}

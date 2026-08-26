@@ -67,7 +67,7 @@ export function PredictionPanel({
         ))}
       </fieldset>
       <p>같은 주제 선택: {selectionCount}/3</p>
-      {enabled && reducedMotion ? <p className="gi-pulse__label">지금 할 차례</p> : null}
+      {enabled && reducedMotion ? <p className="gi-pulse__label motion-static-label">지금 할 차례</p> : null}
       <button
         type="button"
         className={enabled && !reducedMotion ? 'gi-pulse' : undefined}

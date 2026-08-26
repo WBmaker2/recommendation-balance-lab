@@ -17,7 +17,7 @@ export function FeedTransition({ before, after, reducedMotion }: FeedTransitionP
     </>
   );
   if (reducedMotion) {
-    return <section className="distribution-static" aria-label="모션 감소 시 정적 추천 분포">{content}<p className="gi-pulse__label">지금 할 차례</p></section>;
+    return <section className="distribution-static" aria-label="모션 감소 시 정적 추천 분포">{content}<p className="gi-pulse__label motion-static-label">지금 할 차례</p></section>;
   }
   return <section className="feed-transition" aria-label="카드 재배치 장면">{content}</section>;
 }

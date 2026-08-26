@@ -89,7 +89,7 @@ export function BalanceControlPanel({
       >
         <span className="gi-pulse__label">균형 비교</span>
       </button>
-      {compareReady && !compareTriggered && reducedMotion ? <p className="gi-pulse__label">지금 할 차례</p> : null}
+      {compareReady && !compareTriggered && reducedMotion ? <p className="gi-pulse__label motion-static-label">지금 할 차례</p> : null}
       <p>서로 다른 설정 {snapshots.length}/3개 저장됨</p>
     </section>
   );

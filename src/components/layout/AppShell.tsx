@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import type { ExperimentStage } from '../../domain/experimentState';
 import { ModelBoundaryNotice } from '../common/ModelBoundaryNotice';
 import { ResetExperimentButton } from '../common/ResetExperimentButton';
+import { UpdateHistoryDialog } from '../common/UpdateHistoryDialog';
+import { UPDATE_HISTORY } from '../../data/updateHistory';
 import { StageProgress } from './StageProgress';
 
 export interface AppShellProps {
@@ -25,6 +27,9 @@ export function AppShell({ stage, onReset, children }: AppShellProps): React.JSX
       </main>
       <footer>
         <p>수업 안에서만 살펴보는 결정적 가상 실험입니다.</p>
+        <div style={{ textAlign: 'right' }}>
+          <UpdateHistoryDialog entries={UPDATE_HISTORY} />
+        </div>
       </footer>
     </div>
   );

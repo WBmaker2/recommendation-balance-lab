@@ -17,8 +17,10 @@ export function UpdateHistoryDialog({ entries }: UpdateHistoryDialogProps): Reac
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (dialog.open && typeof dialog.close === 'function') dialog.close();
-    else dialog.removeAttribute('open');
-    restoreTriggerFocus();
+    else {
+      dialog.removeAttribute('open');
+      restoreTriggerFocus();
+    }
   }, [restoreTriggerFocus]);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export function UpdateHistoryDialog({ entries }: UpdateHistoryDialogProps): Reac
         aria-labelledby="update-history-title"
         aria-describedby="update-history-description"
         onKeyDown={(event) => {
-          if (event.key === 'Escape') {
+          if (event.key === 'Escape' && typeof dialogRef.current?.showModal !== 'function') {
             event.preventDefault();
             closeDialog();
           }

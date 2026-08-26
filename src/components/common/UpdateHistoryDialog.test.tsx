@@ -16,7 +16,10 @@ beforeEach(() => {
   });
   Object.defineProperty(HTMLDialogElement.prototype, 'close', {
     configurable: true,
-    value(this: HTMLDialogElement) { this.removeAttribute('open'); },
+    value(this: HTMLDialogElement) {
+      this.removeAttribute('open');
+      this.dispatchEvent(new Event('close'));
+    },
   });
 });
 
@@ -42,7 +45,7 @@ describe('업데이트 내역 dialog', () => {
     const trigger = screen.getByRole('button', { name: '업데이트 내역' });
 
     await user.click(trigger);
-    const dialog = screen.getByRole('dialog', { name: '업데이트 내역' });
+    const dialog = screen.getByRole('dialog', { name: '업데이트 내역' }) as HTMLDialogElement;
     expect(dialog).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '업데이트 내역' })).toBeInTheDocument();
     expect([...dialog.querySelectorAll('time')].map((time) => time.dateTime)).toEqual(['2026-08-26', '2026-08-27']);
@@ -54,8 +57,26 @@ describe('업데이트 내역 dialog', () => {
 
     await user.click(trigger);
     fireEvent.keyDown(screen.getByRole('dialog', { name: '업데이트 내역' }), { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: '업데이트 내역' })).toBeInTheDocument();
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    screen.getByRole('dialog', { name: '업데이트 내역' }).dispatchEvent(cancelEvent);
     expect(screen.queryByRole('dialog', { name: '업데이트 내역' })).not.toBeInTheDocument();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it('restores focus when native close fires programmatically and cleans listeners on unmount', async () => {
+    const user = userEvent.setup();
+    const view = render(<UpdateHistoryDialog entries={UPDATE_HISTORY} />);
+    const trigger = screen.getByRole('button', { name: '업데이트 내역' });
+
+    await user.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: '업데이트 내역' }) as HTMLDialogElement;
+    dialog.close();
+    expect(document.activeElement).toBe(trigger);
+
+    view.unmount();
+    dialog.dispatchEvent(new Event('close'));
+    expect(document.activeElement).not.toBe(trigger);
   });
 
   it('keeps the trigger available in every experiment stage', () => {

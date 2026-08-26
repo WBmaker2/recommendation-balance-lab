@@ -3,7 +3,7 @@ import { SUPPLY_PROFILES } from '../data/supplyProfiles';
 import { TOPIC_ORDER } from '../data/topics';
 import { canCompareBalance, createBalancePreview, type BalanceSnapshot } from './balanceScenarios';
 import { hasCompleteChoiceEvidence } from './experimentStateReportEvidence';
-import { isExactInterestRecord } from './reportEvidenceValidation';
+import { isExactInterestRecord, isSafeReportEvidenceGraph } from './reportEvidenceValidation';
 import { recommendationResultsEqual } from './recommendationResult';
 import { recommend, type RecommendationRequest, type RecommendationResult } from './recommendationEngine';
 import type { ExperimentState } from './experimentState';
@@ -44,6 +44,7 @@ const isCurrentChain = (state: ExperimentState): boolean => {
   const exploration = state.explorationResult;
   if (!hasCompleteChoiceEvidence(state)
     || !state.focusTopicId || !isFocus(state.focusTopicId) || !changed || !exploration || !hasExplorationDelta(state)) return false;
+  if (!isSafeReportEvidenceGraph([state.explorationResult, state.interest, state.balanceSnapshots])) return false;
   if (!isCanonicalResult(changed, changed.request)) return false;
   const changedRequest = changed.request;
   const explorationRequest = exploration.request;

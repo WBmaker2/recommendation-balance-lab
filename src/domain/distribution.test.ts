@@ -164,4 +164,19 @@ describe('분포 비교 도메인', () => {
       }, delta, 'science'), testCase.name).toBe(false);
     }
   });
+
+  it('runtime invalid answer 값은 두 축 모두 정답으로 인정하지 않는다', () => {
+    const delta = compareDistributions(
+      { science: 2, art: 2, sports: 2, nature: 1, history: 1 },
+      { science: 5, art: 1, sports: 1, nature: 1, history: 0 },
+    );
+    expect(isDistributionAnswerCorrect({
+      focusDirection: 'increase',
+      varietyDirection: 'best' as never,
+    }, delta, 'science')).toBe(false);
+    expect(isDistributionAnswerCorrect({
+      focusDirection: 'best' as never,
+      varietyDirection: 'decrease',
+    }, delta, 'science')).toBe(false);
+  });
 });

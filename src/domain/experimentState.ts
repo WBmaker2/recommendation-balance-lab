@@ -7,6 +7,8 @@ import { countTopicCards } from './distribution';
 import { applyExploration, InvalidExplorationError } from './exploration';
 import { cloneRecommendationResult, recommendationResultsEqual } from './recommendationResult';
 import { reduceAuditAnswer, reduceAuditRecord } from './experimentStateAudit';
+import { reduceReportCompletion, reduceReportUpdate } from './experimentStateReport';
+import { emptyReportDraft, type ReportAssessment, type ReportDraft } from './reportAssessment';
 import type { AuditPair } from './auditComparison';
 import {
   canCompareBalance,
@@ -68,6 +70,8 @@ export interface ExperimentState {
   balanceCompared: boolean;
   auditPair: AuditPair | null;
   auditAnswer: import('./types').InfluenceFactor | null;
+  reportDraft: ReportDraft;
+  reportAssessment: ReportAssessment | null;
   lastError: string | null;
 }
 
@@ -82,6 +86,8 @@ export type ExperimentAction =
   | { type: 'COMPLETE_BALANCE_COMPARISON' }
   | { type: 'RECORD_AUDIT'; pair: AuditPair }
   | { type: 'SUBMIT_AUDIT_ANSWER'; answer: import('./types').InfluenceFactor }
+  | { type: 'UPDATE_REPORT'; draft: ReportDraft }
+  | { type: 'COMPLETE_REPORT'; assessment: ReportAssessment }
   | { type: 'RESET' };
 
 export class PracticeCardExhaustedError extends Error {
@@ -155,6 +161,8 @@ export const initialExperimentState = (): ExperimentState => {
     balanceCompared: false,
     auditPair: null,
     auditAnswer: null,
+    reportDraft: emptyReportDraft(),
+    reportAssessment: null,
     lastError: null,
   };
 };
@@ -402,6 +410,10 @@ export const experimentReducer = (
       return reduceAuditRecord(state, action.pair);
     case 'SUBMIT_AUDIT_ANSWER':
       return reduceAuditAnswer(state, action.answer);
+    case 'UPDATE_REPORT':
+      return reduceReportUpdate(state, action.draft);
+    case 'COMPLETE_REPORT':
+      return reduceReportCompletion(state, action.assessment);
     default:
       return withError(state, '알 수 없는 실험 동작입니다.');
   }

@@ -9,6 +9,7 @@ import {
   missionForStage,
   nextPracticeCard,
 } from './domain/experimentState';
+import { reportEvidenceForState } from './domain/experimentStateReport';
 import { RecommendationFeed } from './features/feed/RecommendationFeed';
 import { RuleTransparencyPanel } from './features/transparency/RuleTransparencyPanel';
 import { PredictionPanel } from './features/prediction/PredictionPanel';
@@ -25,6 +26,9 @@ import { buildCardExplanation, recommend } from './domain/recommendationEngine';
 import { compareDistributions, countTopicCards } from './domain/distribution';
 import { createBalancePreview, saveBalanceSnapshot } from './domain/balanceScenarios';
 import { buildAuditPair } from './domain/auditComparison';
+import { assessReport } from './domain/reportAssessment';
+import { CompletionScreen } from './features/report/CompletionScreen';
+import { ModelReport } from './features/report/ModelReport';
 import type { CardId, TopicId } from './domain/types';
 import type { PredictionAnswer } from './domain/experimentState';
 import type { RecommendationResult } from './domain/recommendationEngine';
@@ -113,6 +117,8 @@ export default function App(): React.JSX.Element {
       return null;
     }
   }, [state.changedResult, state.stage]);
+
+  const reportEvidence = reportEvidenceForState(state);
 
   useEffect(() => {
     if (state.stage === 'audit' && !state.auditPair && expectedAuditPair) {
@@ -205,6 +211,17 @@ export default function App(): React.JSX.Element {
     dispatch({ type: 'SET_BALANCE_CONFIG', config });
   };
 
+  const submitReport = (): void => {
+    if (!reportEvidence) {
+      dispatch({ type: 'COMPLETE_REPORT', assessment: assessReport(state.reportDraft, {} as never, [], []) });
+      return;
+    }
+    dispatch({
+      type: 'COMPLETE_REPORT',
+      assessment: assessReport(state.reportDraft, reportEvidence.distributionDelta, reportEvidence.snapshots, reportEvidence.completedFactors),
+    });
+  };
+
   return (
     <AppShell stage={state.stage} onReset={() => dispatch({ type: 'RESET' })}>
       {state.stage === 'intro' ? (
@@ -291,12 +308,10 @@ export default function App(): React.JSX.Element {
           ) : state.stage === 'report' ? (
             <>
               {state.lastError ? <p role="alert">{state.lastError}</p> : null}
-              <section aria-labelledby="model-report-title">
-                <h3 id="model-report-title">모델 보고서</h3>
-                <p>선택 기록, 설정, 콘텐츠 공급은 모두 추천 결과에 영향을 줄 수 있는 조건입니다.</p>
-                <p>가상의 단순 규칙이며 실제 서비스 추천을 판정하지 않습니다.</p>
-              </section>
+              {reportEvidence ? <ModelReport draft={state.reportDraft} evidence={reportEvidence} onChange={(draft) => dispatch({ type: 'UPDATE_REPORT', draft })} onSubmit={submitReport} /> : null}
             </>
+          ) : state.stage === 'complete' && reportEvidence ? (
+            <CompletionScreen draft={state.reportDraft} evidence={reportEvidence} onReset={() => dispatch({ type: 'RESET' })} />
           ) : (
             <p>다음 활동을 준비하고 있습니다.</p>
           )}

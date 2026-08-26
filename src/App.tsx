@@ -12,7 +12,7 @@ import { ScenarioComparison } from './features/balance/ScenarioComparison';
 import { SupplyAuditPanel } from './features/audit/SupplyAuditPanel';
 import { ModelReport } from './features/report/ModelReport';
 import { CompletionScreen } from './features/report/CompletionScreen';
-import { useExperimentController } from './features/experiment/useExperimentController';
+import { useExperimentController, type ExperimentController } from './features/experiment/useExperimentController';
 import { choiceResultForState, ruleResultForState, balancePreviewForState } from './features/experiment/experimentViewModel';
 import { missionForStage, type ExperimentState, type PredictionAnswer } from './domain/experimentState';
 import { reportEvidenceForState } from './domain/experimentStateReport';
@@ -136,7 +136,7 @@ function StageContent({ state, ...commands }: StageProps): React.JSX.Element {
   }
 }
 
-const stageCommands = (controller: ReturnType<typeof useExperimentController>): StageProps => ({
+const stageCommands = (controller: ExperimentController): StageProps => ({
   state: controller.state,
   reset: controller.reset,
   start: controller.start,
@@ -152,8 +152,7 @@ const stageCommands = (controller: ReturnType<typeof useExperimentController>): 
   submitReport: () => { void controller.submitReport(); },
 });
 
-export default function App(): React.JSX.Element {
-  const controller = useExperimentController();
+export function AppView({ controller }: { controller: ExperimentController }): React.JSX.Element {
   const { state } = controller;
   const commands = stageCommands(controller);
   const mission = missionForStage(state.stage);
@@ -171,4 +170,8 @@ export default function App(): React.JSX.Element {
       )}
     </AppShell>
   );
+}
+
+export default function App(): React.JSX.Element {
+  return <AppView controller={useExperimentController()} />;
 }

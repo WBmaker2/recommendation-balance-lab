@@ -370,26 +370,25 @@ const reduceBalanceSnapshot = (state: ExperimentState, snapshot: BalanceSnapshot
 };
 
 const reduceBalanceCompletion = (state: ExperimentState, supplied?: AuditPair): ExperimentState => {
-  if (state.stage !== 'balance') return state;
-  if (!canCompareBalance(state.balanceSnapshots)) return withError(state, '서로 다른 설정 세 개를 저장해 주세요.');
-  if (!canAdvanceToAudit(state)) return withError(state, '감사 비교에 필요한 실험 근거가 올바르지 않습니다.');
-  if (!state.changedResult) return withError(state, '감사 비교에 필요한 선택 결과가 없습니다.');
-  let expected: AuditPair;
   try {
-    expected = buildAuditPair(state.changedResult.request, CARDS, SUPPLY_PROFILES);
+    if (state.stage !== 'balance') return state;
+    if (!canCompareBalance(state.balanceSnapshots)) return withError(state, '서로 다른 설정 세 개를 저장해 주세요.');
+    if (!canAdvanceToAudit(state)) return withError(state, '감사 비교에 필요한 실험 근거가 올바르지 않습니다.');
+    if (!state.changedResult) return withError(state, '감사 비교에 필요한 선택 결과가 없습니다.');
+    const expected = buildAuditPair(state.changedResult.request, CARDS, SUPPLY_PROFILES);
+    if (validateAuditPair(expected).length > 0 || (supplied && !auditPairsEqual(supplied, expected))) {
+      return withError(state, '감사 비교가 가상 규칙과 일치하지 않습니다.');
+    }
+    return {
+      ...state,
+      stage: 'audit',
+      balanceCompared: true,
+      auditPair: cloneAuditPair(expected),
+      lastError: null,
+    };
   } catch {
-    return withError(state, '감사 비교를 만들 수 없습니다.');
+    return state;
   }
-  if (validateAuditPair(expected).length > 0 || (supplied && !auditPairsEqual(supplied, expected))) {
-    return withError(state, '감사 비교가 가상 규칙과 일치하지 않습니다.');
-  }
-  return {
-    ...state,
-    stage: 'audit',
-    balanceCompared: true,
-    auditPair: cloneAuditPair(expected),
-    lastError: null,
-  };
 };
 
 export const canRunPrediction = (state: ExperimentState): boolean =>

@@ -2,6 +2,7 @@ import { CARDS } from '../data/cards';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
 import { TOPIC_ORDER } from '../data/topics';
 import { canCompareBalance, createBalancePreview, type BalanceSnapshot } from './balanceScenarios';
+import { hasCompleteChoiceEvidence } from './experimentStateReportEvidence';
 import { isExactInterestRecord } from './reportEvidenceValidation';
 import { recommendationResultsEqual } from './recommendationResult';
 import { recommend, type RecommendationRequest, type RecommendationResult } from './recommendationEngine';
@@ -41,7 +42,8 @@ const hasExplorationDelta = (state: ExperimentState): boolean => {
 const isCurrentChain = (state: ExperimentState): boolean => {
   const changed = state.changedResult;
   const exploration = state.explorationResult;
-  if (!state.focusTopicId || !isFocus(state.focusTopicId) || !changed || !exploration || !hasExplorationDelta(state)) return false;
+  if (!hasCompleteChoiceEvidence(state)
+    || !state.focusTopicId || !isFocus(state.focusTopicId) || !changed || !exploration || !hasExplorationDelta(state)) return false;
   if (!isCanonicalResult(changed, changed.request)) return false;
   const changedRequest = changed.request;
   const explorationRequest = exploration.request;
@@ -68,7 +70,13 @@ const isSnapshotFromCurrentExploration = (snapshot: BalanceSnapshot, state: Expe
 
 /** Gates the audit transition on the current experiment chain, not just valid-looking snapshots. */
 export const canAdvanceToAudit = (state: ExperimentState): boolean => {
-  if (state.stage !== 'balance' || !state.balanceSnapshots || !canCompareBalance(state.balanceSnapshots)) return false;
-  if (!isCurrentChain(state)) return false;
-  return state.balanceSnapshots.every((snapshot) => isSnapshotFromCurrentExploration(snapshot, state));
+  try {
+    if (state.stage !== 'balance' || state.balanceCompared || !state.balanceSnapshots || !canCompareBalance(state.balanceSnapshots)) return false;
+    if (!isCurrentChain(state)) return false;
+    return state.balanceSnapshots.every((snapshot) => isSnapshotFromCurrentExploration(snapshot, state));
+  } catch {
+    return false;
+  }
 };
+
+export const hasPreAuditBalanceEvidence = canAdvanceToAudit;

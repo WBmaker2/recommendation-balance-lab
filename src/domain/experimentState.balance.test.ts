@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { CARDS } from '../data/cards';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
+import { applyExploration } from './exploration';
 import { canCompareBalance, createBalancePreview, type BalanceSnapshot } from './balanceScenarios';
-import { experimentReducer, initialExperimentState, type ExperimentState } from './experimentState';
+import { recommend } from './recommendationEngine';
+import { experimentReducer, initialExperimentState, nextPracticeCard, type ExperimentState } from './experimentState';
 
 const supply = SUPPLY_PROFILES.find((profile) => profile.id === 'balanced')!;
 const baseRequest = {
@@ -14,19 +16,29 @@ const baseRequest = {
   feedSize: 8 as const,
 };
 const readyState = (): ExperimentState => {
-  const state = initialExperimentState();
-  const changedRequest = { ...baseRequest, interest: { science: 3, art: 0, sports: 0, nature: 0, history: 0 }, round: 1 };
-  const explorationRequest = { ...changedRequest, interest: { ...changedRequest.interest, art: 1 }, round: 2 };
-  const changed = createBalancePreview(changedRequest, { diversityLevel: 0, memoryMode: 'keep' }, CARDS, supply);
-  const exploration = createBalancePreview(explorationRequest, { diversityLevel: 0, memoryMode: 'keep' }, CARDS, supply);
-  return {
-    ...state,
-    stage: 'balance',
-    interest: { ...explorationRequest.interest },
-    focusTopicId: 'science',
-    explorationResult: exploration,
-    changedResult: changed,
-  };
+  let state = experimentReducer(initialExperimentState(), { type: 'START' });
+  for (let count = 0; count < 3; count += 1) {
+    const card = state.choiceFeed.find((item) => item.topicId === 'science')!;
+    const usedIds = new Set([...state.choiceFeed.map((item) => item.id), ...state.selectionHistory.map((item) => item.cardId)]);
+    state = experimentReducer(state, { type: 'SELECT_CARD', card, replacement: nextPracticeCard('science', usedIds, CARDS) });
+  }
+  const changedRequest = { ...state.initialResult.request, interest: { ...state.interest }, round: 1 };
+  state = experimentReducer(state, {
+    type: 'SUBMIT_PREDICTION',
+    answer: { focusDirection: 'increase', varietyDirection: 'decrease' },
+    result: recommend(changedRequest, CARDS, supply),
+  });
+  state = experimentReducer(state, {
+    type: 'SUBMIT_DISTRIBUTION',
+    answer: { focusDirection: 'increase', varietyDirection: 'decrease' },
+  });
+  const interest = applyExploration(state.interest, 'art', state.focusTopicId!);
+  const explorationRequest = { ...changedRequest, interest, round: 2 };
+  return experimentReducer(state, {
+    type: 'RECORD_EXPLORATION',
+    topicId: 'art',
+    result: recommend(explorationRequest, CARDS, supply),
+  });
 };
 const snapshotFor = (state: ExperimentState, id: BalanceSnapshot['id'], diversityLevel: 0 | 1 | 2, memoryMode: 'keep' | 'clear'): BalanceSnapshot => {
   const result = createBalancePreview(state.explorationResult!.request, { diversityLevel, memoryMode }, CARDS, supply);

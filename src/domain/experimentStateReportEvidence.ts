@@ -98,6 +98,15 @@ const hasChoiceEvidence = (state: ExperimentState, delta: DistributionDelta | nu
   }
 };
 
+/** Reusable pre-audit proof for the initial result, three selections, prediction, and distribution answer. */
+export const hasCompleteChoiceEvidence = (state: ExperimentState): boolean => {
+  try {
+    return hasChoiceEvidence(state, distributionFor(state));
+  } catch {
+    return false;
+  }
+};
+
 const sameInterest = (left: InterestRecord, right: InterestRecord): boolean => (
   TOPIC_ORDER.every((topicId) => left[topicId] === right[topicId])
 );

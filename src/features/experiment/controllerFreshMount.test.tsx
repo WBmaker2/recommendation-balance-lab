@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import App from '../../App';
+import { AppView } from '../../App';
 import type { ExperimentState, PredictionAnswer } from '../../domain/experimentState';
 import { useExperimentController, type ExperimentController } from './useExperimentController';
 
@@ -24,19 +24,35 @@ const restoreDescriptors = (descriptors: readonly BrowserDescriptor[]): void => 
 
 const initialBrowserDescriptors = browserDescriptors();
 
+const probeAbsentDescriptor = (entry: BrowserDescriptor, installSpy: () => unknown): void => {
+  try {
+    Reflect.deleteProperty(entry.target, entry.key);
+    expect(Object.getOwnPropertyDescriptor(entry.target, entry.key)).toBeUndefined();
+    Object.defineProperty(entry.target, entry.key, { configurable: true, writable: true, value: vi.fn() });
+    expect(installSpy()).toBeDefined();
+  } finally {
+    vi.restoreAllMocks();
+    restoreDescriptors([entry]);
+  }
+  expect(Object.getOwnPropertyDescriptor(entry.target, entry.key)).toEqual(entry.descriptor);
+};
+
 afterEach(() => {
   vi.restoreAllMocks();
   restoreDescriptors(initialBrowserDescriptors);
   cleanup();
 });
 
-function ControllerProbe({ onState }: { onState?: (state: ExperimentState) => void }): React.JSX.Element {
-  const { state } = useExperimentController();
-  onState?.(state);
+function ControllerHarness({ onState }: { onState?: (state: ExperimentState) => void }): React.JSX.Element {
+  const controller = useExperimentController();
+  onState?.(controller.state);
   return (
-    <output data-testid="controller-state">
-      {JSON.stringify({ stage: state.stage, interest: state.interest, snapshots: state.balanceSnapshots, auditPair: state.auditPair, reportAssessment: state.reportAssessment })}
-    </output>
+    <>
+      <AppView controller={controller} />
+      <output data-testid="controller-state">
+        {JSON.stringify({ stage: controller.state.stage, interest: controller.state.interest, snapshots: controller.state.balanceSnapshots, auditPair: controller.state.auditPair, reportAssessment: controller.state.reportAssessment })}
+      </output>
+    </>
   );
 }
 
@@ -71,13 +87,15 @@ describe('controller fresh mount', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     if (!('sendBeacon' in navigator)) Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: vi.fn() });
     const sendBeacon = vi.spyOn(navigator, 'sendBeacon');
-    const mounted = render(<><App /><ControllerProbe onState={(state) => { firstState.current = state; }} /></>);
+    const mounted = render(<ControllerHarness onState={(state) => { firstState.current = state; }} />);
     await reachBalanceWithSnapshots(user);
     expect(screen.getByText('서로 다른 설정 3/3개 저장됨')).toBeInTheDocument();
+    expect(firstState.current?.stage).toBe('balance');
+    expect(firstState.current?.balanceSnapshots).toHaveLength(3);
     mounted.unmount();
 
     const secondState: { current?: ExperimentState } = {};
-    render(<><App /><ControllerProbe onState={(state) => { secondState.current = state; }} /></>);
+    render(<ControllerHarness onState={(state) => { secondState.current = state; }} />);
     expect(screen.getByRole('button', { name: '실험 시작' })).toBeInTheDocument();
     expect(JSON.parse(screen.getByTestId('controller-state').textContent ?? '{}')).toEqual({
       stage: 'intro',
@@ -102,6 +120,13 @@ describe('controller fresh mount', () => {
   });
 
   it('does not leak browser API descriptors between probes', () => {
+    expect(browserDescriptors()).toEqual(initialBrowserDescriptors);
+  });
+
+  it('installs and restores each absent browser API branch', () => {
+    probeAbsentDescriptor(browserDescriptors()[0], () => vi.spyOn(Storage.prototype, 'setItem'));
+    probeAbsentDescriptor(browserDescriptors()[1], () => vi.spyOn(globalThis, 'fetch'));
+    probeAbsentDescriptor(browserDescriptors()[2], () => vi.spyOn(navigator, 'sendBeacon'));
     expect(browserDescriptors()).toEqual(initialBrowserDescriptors);
   });
 

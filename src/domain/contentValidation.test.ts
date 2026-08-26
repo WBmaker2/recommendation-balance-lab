@@ -62,4 +62,26 @@ describe('추천 알고리즘 균형 실험실 콘텐츠 계약', () => {
       ]),
     );
   });
+
+  it('중복 후보 카드는 주제별 고유 후보 수를 늘리지 않는다', () => {
+    const balanced = SUPPLY_PROFILES.find((supply) => supply.id === 'balanced');
+    if (!balanced) throw new Error('balanced supply profile is required for this test');
+
+    const repeatedScienceCandidates = [
+      ...Array.from({ length: 5 }, () => 'science-1' as const),
+      ...balanced.candidateCardIds.filter((cardId) => !cardId.startsWith('science-')),
+    ];
+    const supplies = SUPPLY_PROFILES.map((supply) =>
+      supply.id === 'balanced' ? { ...supply, candidateCardIds: repeatedScienceCandidates } : supply,
+    );
+
+    const issues = validateContent(TOPICS, CARDS, supplies, MISSIONS);
+
+    expect(issues).toContainEqual(
+      expect.objectContaining({
+        code: 'insufficient-candidates',
+        path: 'supplies.balanced.candidateCardIds.science',
+      }),
+    );
+  });
 });

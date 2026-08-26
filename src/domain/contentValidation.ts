@@ -60,7 +60,7 @@ export const validateContent = (
   }
 
   for (const supply of supplies) {
-    const candidateTopicCounts = new Map<TopicId, number>();
+    const candidateTopicIds = new Map<TopicId, Set<string>>();
     for (const candidateId of supply.candidateCardIds) {
       const candidate = cards.find((card) => card.id === candidateId);
       if (!candidate) {
@@ -68,11 +68,13 @@ export const validateContent = (
         continue;
       }
       if (isApprovedTopicId(candidate.topicId)) {
-        candidateTopicCounts.set(candidate.topicId, (candidateTopicCounts.get(candidate.topicId) ?? 0) + 1);
+        const topicCandidateIds = candidateTopicIds.get(candidate.topicId) ?? new Set<string>();
+        topicCandidateIds.add(candidate.id);
+        candidateTopicIds.set(candidate.topicId, topicCandidateIds);
       }
     }
     for (const topicId of APPROVED_TOPIC_IDS) {
-      if ((candidateTopicCounts.get(topicId) ?? 0) < 5) {
+      if ((candidateTopicIds.get(topicId)?.size ?? 0) < 5) {
         issues.push(issue('insufficient-candidates', `supplies.${supply.id}.candidateCardIds.${topicId}`, '모든 주제에 후보 카드가 최소 5장 필요합니다.'));
       }
     }

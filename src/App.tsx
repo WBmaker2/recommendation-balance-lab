@@ -17,12 +17,14 @@ import { DistributionTable } from './features/comparison/DistributionTable';
 import { ExplorationPanel } from './features/exploration/ExplorationPanel';
 import { BalanceControlPanel } from './features/balance/BalanceControlPanel';
 import { ScenarioComparison } from './features/balance/ScenarioComparison';
+import { SupplyAuditPanel } from './features/audit/SupplyAuditPanel';
 import { CARDS } from './data/cards';
 import { SUPPLY_PROFILES } from './data/supplyProfiles';
 import { TOPIC_ORDER, TOPICS } from './data/topics';
 import { buildCardExplanation, recommend } from './domain/recommendationEngine';
 import { compareDistributions, countTopicCards } from './domain/distribution';
 import { createBalancePreview, saveBalanceSnapshot } from './domain/balanceScenarios';
+import { buildAuditPair } from './domain/auditComparison';
 import type { CardId, TopicId } from './domain/types';
 import type { PredictionAnswer } from './domain/experimentState';
 import type { RecommendationResult } from './domain/recommendationEngine';
@@ -102,6 +104,21 @@ export default function App(): React.JSX.Element {
     if (!state.explorationResult) return null;
     return createBalancePreview(state.explorationResult.request, state.balanceConfig, CARDS, balancedSupply);
   }, [state.balanceConfig, state.explorationResult]);
+
+  const expectedAuditPair = useMemo(() => {
+    if (state.stage !== 'audit' || !state.changedResult) return null;
+    try {
+      return buildAuditPair(state.changedResult.request, CARDS, SUPPLY_PROFILES);
+    } catch {
+      return null;
+    }
+  }, [state.changedResult, state.stage]);
+
+  useEffect(() => {
+    if (state.stage === 'audit' && !state.auditPair && expectedAuditPair) {
+      dispatch({ type: 'RECORD_AUDIT', pair: expectedAuditPair });
+    }
+  }, [expectedAuditPair, state.auditPair, state.stage]);
 
   useEffect(() => {
     const count = state.selectionHistory.length;
@@ -262,8 +279,23 @@ export default function App(): React.JSX.Element {
             </>
           ) : state.stage === 'audit' ? (
             <>
-              <p>같은 선택도 콘텐츠 공급 조건과 설정에 따라 다른 목록이 될 수 있습니다.</p>
+              {state.lastError ? <p role="alert">{state.lastError}</p> : null}
+              {(state.auditPair ?? expectedAuditPair) ? (
+                <SupplyAuditPanel
+                  pair={(state.auditPair ?? expectedAuditPair)!}
+                  onAnswer={(answer) => dispatch({ type: 'SUBMIT_AUDIT_ANSWER', answer })}
+                />
+              ) : null}
               <p>이 결과는 가상의 단순 규칙을 살펴본 학습용 증거입니다.</p>
+            </>
+          ) : state.stage === 'report' ? (
+            <>
+              {state.lastError ? <p role="alert">{state.lastError}</p> : null}
+              <section aria-labelledby="model-report-title">
+                <h3 id="model-report-title">모델 보고서</h3>
+                <p>선택 기록, 설정, 콘텐츠 공급은 모두 추천 결과에 영향을 줄 수 있는 조건입니다.</p>
+                <p>가상의 단순 규칙이며 실제 서비스 추천을 판정하지 않습니다.</p>
+              </section>
             </>
           ) : (
             <p>다음 활동을 준비하고 있습니다.</p>

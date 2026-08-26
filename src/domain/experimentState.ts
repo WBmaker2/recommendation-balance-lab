@@ -6,6 +6,8 @@ import { recommend, type RecommendationResult } from './recommendationEngine';
 import { countTopicCards } from './distribution';
 import { applyExploration, InvalidExplorationError } from './exploration';
 import { cloneRecommendationResult, recommendationResultsEqual } from './recommendationResult';
+import { reduceAuditAnswer, reduceAuditRecord } from './experimentStateAudit';
+import type { AuditPair } from './auditComparison';
 import {
   canCompareBalance,
   createBalancePreview,
@@ -64,6 +66,8 @@ export interface ExperimentState {
   balanceConfig: BalanceConfig;
   balanceSnapshots: readonly BalanceSnapshot[];
   balanceCompared: boolean;
+  auditPair: AuditPair | null;
+  auditAnswer: import('./types').InfluenceFactor | null;
   lastError: string | null;
 }
 
@@ -76,6 +80,8 @@ export type ExperimentAction =
   | { type: 'SET_BALANCE_CONFIG'; config: BalanceConfig }
   | { type: 'SAVE_BALANCE_SNAPSHOT'; snapshot: BalanceSnapshot }
   | { type: 'COMPLETE_BALANCE_COMPARISON' }
+  | { type: 'RECORD_AUDIT'; pair: AuditPair }
+  | { type: 'SUBMIT_AUDIT_ANSWER'; answer: import('./types').InfluenceFactor }
   | { type: 'RESET' };
 
 export class PracticeCardExhaustedError extends Error {
@@ -147,6 +153,8 @@ export const initialExperimentState = (): ExperimentState => {
     balanceConfig: { diversityLevel: 0, memoryMode: 'keep' },
     balanceSnapshots: [],
     balanceCompared: false,
+    auditPair: null,
+    auditAnswer: null,
     lastError: null,
   };
 };
@@ -390,6 +398,10 @@ export const experimentReducer = (
       return reduceBalanceSnapshot(state, action.snapshot);
     case 'COMPLETE_BALANCE_COMPARISON':
       return reduceBalanceCompletion(state);
+    case 'RECORD_AUDIT':
+      return reduceAuditRecord(state, action.pair);
+    case 'SUBMIT_AUDIT_ANSWER':
+      return reduceAuditAnswer(state, action.answer);
     default:
       return withError(state, '알 수 없는 실험 동작입니다.');
   }

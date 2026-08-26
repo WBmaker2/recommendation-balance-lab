@@ -84,7 +84,7 @@ export function BalanceControlPanel({
         type="button"
         onClick={handleCompare}
         disabled={!compareReady || compareTriggered}
-        data-gi-pulse={compareReady && !compareTriggered ? 'true' : 'false'}
+        data-gi-pulse={compareReady && !compareTriggered && !reducedMotion ? 'true' : 'false'}
         className={compareReady && !compareTriggered && !reducedMotion ? 'gi-pulse' : undefined}
       >
         <span className="gi-pulse__label">균형 비교</span>

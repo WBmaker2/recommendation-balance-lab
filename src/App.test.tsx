@@ -471,9 +471,18 @@ describe('교실용 시각 체계와 모션 대체', () => {
     cleanup();
     render(<BalanceControlPanel config={{ diversityLevel: 2, memoryMode: 'keep' }} snapshots={visualSnapshots} onConfigChange={vi.fn()} onSave={vi.fn()} onCompare={vi.fn()} />);
     expect(screen.getByRole('button', { name: '균형 비교' })).not.toHaveClass('gi-pulse');
+    expect(screen.getByRole('button', { name: '균형 비교' })).toHaveAttribute('data-gi-pulse', 'false');
     expect(screen.getByText('지금 할 차례')).toHaveClass('motion-static-label');
     cleanup();
     if (original) Object.defineProperty(window, 'matchMedia', original);
     else Reflect.deleteProperty(window, 'matchMedia');
+  });
+
+  it('실제 App 학습 흐름에서 승인된 카드 교체 전환을 표시한다', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: '실험 시작' }));
+    await user.click(screen.getAllByRole('button', { name: '이 카드 선택' })[0]);
+    expect(screen.getByLabelText('카드 재배치 장면')).toBeInTheDocument();
   });
 });

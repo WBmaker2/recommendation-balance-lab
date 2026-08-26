@@ -14,6 +14,8 @@ export interface RecommendationFeedProps {
   onSelect(cardId: CardId): void;
 }
 
+const feedFingerprint = (result: RecommendationResult): string => result.cards.map((card) => card.id).join('|');
+
 export function RecommendationFeed({
   result,
   selectedIds,
@@ -63,7 +65,7 @@ export function RecommendationFeed({
           );
         })}
       </div>
-      {transitionBefore && transitionBefore.inputFingerprint !== result.inputFingerprint ? (
+      {transitionBefore && feedFingerprint(transitionBefore) !== feedFingerprint(result) ? (
         <FeedTransition before={transitionBefore} after={result} reducedMotion={reducedMotion} />
       ) : null}
       {activeExplanation ? (

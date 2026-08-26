@@ -23,16 +23,25 @@ export function useReducedMotion(): boolean {
       return undefined;
     }
     const update = (event: MediaQueryListEvent): void => setReduced(event.matches);
+    let unsubscribe: (() => void) | undefined;
     try {
-      if (typeof media.addEventListener === 'function') media.addEventListener('change', update);
-      else if (typeof media.addListener === 'function') media.addListener(update);
+      if (typeof media.addEventListener === 'function') {
+        media.addEventListener('change', update);
+        unsubscribe = () => {
+          if (typeof media.removeEventListener !== 'function') return;
+          try { media.removeEventListener('change', update); } catch { /* cleanup must not escape */ }
+        };
+      } else if (typeof media.addListener === 'function') {
+        media.addListener(update);
+        unsubscribe = () => {
+          if (typeof media.removeListener !== 'function') return;
+          try { media.removeListener(update); } catch { /* cleanup must not escape */ }
+        };
+      }
     } catch {
       return undefined;
     }
-    return () => {
-      if (typeof media.removeEventListener === 'function') media.removeEventListener('change', update);
-      else if (typeof media.removeListener === 'function') media.removeListener(update);
-    };
+    return unsubscribe;
   }, []);
 
   return reduced;

@@ -53,4 +53,30 @@ describe('useReducedMotion', () => {
     expect(screen.getByText('full')).toBeInTheDocument();
     restoreMedia(original);
   });
+
+  it('removes only the listener API that registered successfully', () => {
+    const modernAdd = vi.fn();
+    const legacyAdd = vi.fn();
+    const legacyRemove = vi.fn();
+    let original = installMedia({ matches: false, addEventListener: modernAdd, removeEventListener: undefined, addListener: legacyAdd, removeListener: legacyRemove });
+    const modernView = render(<Probe />);
+    modernView.unmount();
+    expect(modernAdd).toHaveBeenCalled();
+    expect(legacyRemove).not.toHaveBeenCalled();
+    restoreMedia(original);
+
+    const modernRemove = vi.fn();
+    original = installMedia({ matches: false, addEventListener: undefined, removeEventListener: modernRemove, addListener: legacyAdd, removeListener: undefined });
+    const legacyView = render(<Probe />);
+    legacyView.unmount();
+    expect(modernRemove).not.toHaveBeenCalled();
+    restoreMedia(original);
+  });
+
+  it('swallows a throwing matching remover during cleanup', () => {
+    const original = installMedia({ matches: true, addEventListener: vi.fn(), removeEventListener: () => { throw new Error('cleanup failed'); } });
+    const view = render(<Probe />);
+    expect(() => view.unmount()).not.toThrow();
+    restoreMedia(original);
+  });
 });

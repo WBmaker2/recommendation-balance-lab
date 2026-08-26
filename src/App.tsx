@@ -5,10 +5,12 @@ import { experimentReducer, initialExperimentState, missionForStage, nextPractic
 import { RecommendationFeed } from './features/feed/RecommendationFeed';
 import { RuleTransparencyPanel } from './features/transparency/RuleTransparencyPanel';
 import { PredictionPanel } from './features/prediction/PredictionPanel';
+import { DistributionComparison } from './features/comparison/DistributionComparison';
 import { CARDS } from './data/cards';
 import { SUPPLY_PROFILES } from './data/supplyProfiles';
 import { TOPICS } from './data/topics';
 import { buildCardExplanation, recommend } from './domain/recommendationEngine';
+import { countTopicCards } from './domain/distribution';
 import type { CardId, TopicId } from './domain/types';
 import type { PredictionAnswer } from './domain/experimentState';
 
@@ -110,16 +112,23 @@ export default function App(): React.JSX.Element {
                 />
               ) : null}
             </>
-          ) : state.stage === 'comparison' && state.changedResult ? (
-            <section aria-labelledby="comparison-placeholder-title">
-              <p>미션 2 비교 화면을 준비했습니다.</p>
+          ) : state.stage === 'comparison' && state.changedResult && state.focusTopicId ? (
+            <>
               <h3 id="comparison-placeholder-title">예측한 다음 목록의 결정적 결과</h3>
               <ul>
-                {Object.entries(state.changedResult.topicCounts).map(([topicId, count]) => (
+                {Object.entries(countTopicCards(state.changedResult.cards)).map(([topicId, count]) => (
                   <li key={topicId}>{topicLabel(topicId as keyof typeof state.interest)} {count}장</li>
                 ))}
               </ul>
-            </section>
+              <DistributionComparison
+                before={state.initialResult}
+                after={state.changedResult}
+                focusTopicId={state.focusTopicId}
+                onCorrect={(answer) => dispatch({ type: 'SUBMIT_DISTRIBUTION', answer })}
+              />
+            </>
+          ) : state.stage === 'exploration' ? (
+            <p>미션 3. 탐색 버튼</p>
           ) : (
             <p>다음 활동을 준비하고 있습니다.</p>
           )}

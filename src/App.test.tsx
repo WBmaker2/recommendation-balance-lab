@@ -6,6 +6,10 @@ import { ResetExperimentButton } from './components/common/ResetExperimentButton
 import { LEARNING_GOALS, MODEL_WARNING } from './data/learningCopy';
 import { MISSIONS } from './data/missions';
 import { TOPICS } from './data/topics';
+import { CARDS } from './data/cards';
+import { SUPPLY_PROFILES } from './data/supplyProfiles';
+import { recommend, type RecommendationResult } from './domain/recommendationEngine';
+import { DistributionComparison } from './features/comparison/DistributionComparison';
 
 afterEach(cleanup);
 
@@ -199,5 +203,83 @@ describe('미션 1: 반복 선택과 다음 목록 예측', () => {
     await user.click(submit);
     expect(screen.getByText('미션 2 비교 화면을 준비했습니다.')).toBeInTheDocument();
     expect(screen.getByText('과학 5장')).toBeInTheDocument();
+  });
+});
+
+describe('미션 2: 추천 분포 전후 비교', () => {
+  const balanced = SUPPLY_PROFILES.find((profile) => profile.id === 'balanced')!;
+  const initial = recommend({
+    interest: { science: 0, art: 0, sports: 0, nature: 0, history: 0 },
+    diversityLevel: 0,
+    memoryMode: 'keep',
+    supplyProfileId: 'balanced',
+    round: 0,
+    feedSize: 8,
+  }, CARDS, balanced);
+  const scienceHeavy = recommend({
+    interest: { science: 3, art: 0, sports: 0, nature: 0, history: 0 },
+    diversityLevel: 0,
+    memoryMode: 'keep',
+    supplyProfileId: 'balanced',
+    round: 1,
+    feedSize: 8,
+  }, CARDS, balanced);
+
+  it('실제 카드의 정수 표를 보여 주고 두 사실을 답하기 전에는 막는다', () => {
+    const onCorrect = vi.fn();
+    render(<DistributionComparison before={initial} after={scienceHeavy} focusTopicId="science" onCorrect={onCorrect} />);
+
+    expect(screen.getByRole('table', { name: '추천 주제 분포 전후 비교' })).toBeInTheDocument();
+    for (const heading of ['주제', '선택 전 카드 수', '선택 후 카드 수', '차이']) {
+      expect(screen.getByRole('columnheader', { name: heading })).toBeInTheDocument();
+    }
+    expect(screen.getByText('과학 카드는 3장 늘고, 나타난 주제는 5개에서 4개로 줄었습니다.')).toBeInTheDocument();
+    expect(screen.getByText('5장')).toBeInTheDocument();
+    expect(screen.getByText('+3장')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '분포 문장 확인' })).toBeDisabled();
+    expect(screen.getAllByRole('radio', { name: '늘었다' })).toHaveLength(2);
+    expect(screen.getAllByRole('radio', { name: '같다' })).toHaveLength(2);
+    expect(screen.getAllByRole('radio', { name: '줄었다' })).toHaveLength(2);
+  });
+
+  it('오답은 미션 2에 남아 실제 셀 근거를 제시하고 정답은 미션 3으로 한 번만 연다', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: '실험 시작' }));
+    const slot = screen.getAllByRole('article', { name: /추천 카드/ })[0];
+    for (let count = 0; count < 3; count += 1) await user.click(slot.querySelector<HTMLButtonElement>('button')!);
+    await user.click(screen.getAllByRole('radio', { name: '늘어난다' })[0]);
+    await user.click(screen.getAllByRole('radio', { name: '줄어든다' })[1]);
+    await user.click(screen.getByRole('button', { name: '다음 목록 예측' }));
+
+    await user.click(screen.getAllByRole('radio', { name: /^같다$/ })[0]);
+    await user.click(screen.getAllByRole('radio', { name: /^같다$/ })[1]);
+    await user.click(screen.getByRole('button', { name: '분포 문장 확인' }));
+    expect(screen.getByRole('heading', { name: '미션 2. 좁아진 창' })).toBeInTheDocument();
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('과학');
+    expect(alert).toHaveTextContent('선택 전 2장');
+    expect(alert).toHaveTextContent('선택 후 5장');
+    expect(alert).toHaveTextContent('나타난 주제: 5개 → 4개');
+    expect(alert).toHaveTextContent('좋고 나쁜 비율을 고르는 문제가 아니라 표의 사실을 읽는 활동입니다.');
+    expect(screen.getByRole('link', { name: '2장' })).toHaveAttribute('href', '#distribution-science-before');
+    expect(screen.getByRole('link', { name: '5장' })).toHaveAttribute('href', '#distribution-science-after');
+
+    await user.click(screen.getAllByRole('radio', { name: /^늘었다$/ })[0]);
+    await user.click(screen.getAllByRole('radio', { name: /^줄었다$/ })[1]);
+    const submit = screen.getByRole('button', { name: '분포 문장 확인' });
+    await user.click(submit);
+    expect(screen.getByRole('heading', { name: '미션 3. 탐색 버튼' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '분포 문장 확인' })).not.toBeInTheDocument();
+  });
+
+  it('저장된 topicCounts가 달라도 실제 카드 표를 따른다', () => {
+    const inconsistent: RecommendationResult = {
+      ...initial,
+      topicCounts: { science: 8, art: 0, sports: 0, nature: 0, history: 0 },
+    };
+    render(<DistributionComparison before={inconsistent} after={scienceHeavy} focusTopicId="science" onCorrect={vi.fn()} />);
+    expect(document.getElementById('distribution-science-before')).toHaveTextContent('2장');
+    expect(document.getElementById('distribution-science-before')).not.toHaveTextContent('8장');
   });
 });

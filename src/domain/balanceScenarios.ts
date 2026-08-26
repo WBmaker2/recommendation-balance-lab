@@ -1,6 +1,6 @@
 import { TOPIC_ORDER } from '../data/topics';
 import { recommend, type RecommendationRequest, type RecommendationResult } from './recommendationEngine';
-import { cloneRecommendationResult } from './recommendationResult';
+import { cloneRecommendationResult, isValidRecommendationResult } from './recommendationResult';
 import type { ContentCard, DiversityLevel, MemoryMode, SupplyProfile } from './types';
 
 export interface BalanceConfig {
@@ -66,21 +66,11 @@ const isSnapshotShape = (value: unknown): value is BalanceSnapshot => {
   const snapshot = value as Partial<BalanceSnapshot>;
   return (snapshot.id === 'scenario-a' || snapshot.id === 'scenario-b' || snapshot.id === 'scenario-c')
     && isBalanceConfig(snapshot.config)
-    && isRecommendationResultShape(snapshot.result);
-};
-
-const isRecommendationResultShape = (value: unknown): value is RecommendationResult => {
-  if (!value || typeof value !== 'object') return false;
-  const result = value as Partial<RecommendationResult>;
-  const request = result.request;
-  return Boolean(request && typeof request === 'object')
-    && isDiversityLevel(request?.diversityLevel)
-    && isMemoryMode(request?.memoryMode)
-    && Array.isArray(result.cards)
-    && Boolean(result.topicCounts && typeof result.topicCounts === 'object')
-    && Boolean(result.tokenBreakdown && typeof result.tokenBreakdown === 'object')
-    && Array.isArray(result.explanations)
-    && typeof result.inputFingerprint === 'string';
+    && isValidRecommendationResult(snapshot.result)
+    && sameConfig(snapshot.config, {
+      diversityLevel: snapshot.result.request.diversityLevel,
+      memoryMode: snapshot.result.request.memoryMode,
+    });
 };
 
 export const saveBalanceSnapshot = (
@@ -88,20 +78,25 @@ export const saveBalanceSnapshot = (
   config: BalanceConfig,
   result: RecommendationResult,
 ): SaveSnapshotResult => {
-  if (!Array.isArray(existing) || !isBalanceConfig(config) || !isRecommendationResultShape(result)) {
+  if (!Array.isArray(existing) || existing.length > 3 || !isBalanceConfig(config) || !isValidRecommendationResult(result)) {
     throw new InvalidBalanceSnapshotError();
   }
-  if (!result.request || !isDiversityLevel(result.request.diversityLevel) || !isMemoryMode(result.request.memoryMode)
-    || !sameConfig(config, {
+  if (!sameConfig(config, {
     diversityLevel: result.request.diversityLevel,
     memoryMode: result.request.memoryMode,
   })) throw new InvalidBalanceSnapshotError();
-  if (existing.some((snapshot) => !isSnapshotShape(snapshot))) throw new InvalidBalanceSnapshotError();
+  const expectedIds: BalanceSnapshot['id'][] = ['scenario-a', 'scenario-b', 'scenario-c'];
+  if (!existing.every((snapshot, index) => isSnapshotShape(snapshot) && snapshot.id === expectedIds[index])) {
+    throw new InvalidBalanceSnapshotError();
+  }
+  if (existing.some((snapshot, index) => existing.slice(0, index).some((previous) => sameConfig(previous.config, snapshot.config)))) {
+    throw new InvalidBalanceSnapshotError();
+  }
   if (existing.some((snapshot) => sameConfig(snapshot.config, config))) {
     return { ok: false, reason: 'duplicate-config' };
   }
   if (existing.length >= 3) return { ok: false, reason: 'three-snapshot-limit' };
-  const id = `scenario-${String.fromCharCode(97 + existing.length)}` as BalanceSnapshot['id'];
+  const id = expectedIds[existing.length];
   const snapshot: BalanceSnapshot = {
     id,
     config: cloneConfig(config),

@@ -53,6 +53,10 @@ describe('미션 4: 균형 설정 비교 learner flow', () => {
     await user.click(screen.getByRole('button', { name: '균형 비교' }));
     expect(screen.getByRole('heading', { name: '미션 5. 모델 감사' })).toBeInTheDocument();
     expect(screen.getByText('가상의 단순 규칙이며 실제 서비스 추천을 판정하지 않습니다')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '기록 지우기' }));
+    await user.click(screen.getByRole('button', { name: '기록을 지우고 처음으로' }));
+    expect(screen.getByRole('button', { name: '실험 시작' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '균형 비교' })).not.toBeInTheDocument();
   });
 });
 

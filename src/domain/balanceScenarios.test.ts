@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { CARDS } from '../data/cards';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
-import type { RecommendationRequest } from './recommendationEngine';
+import type { RecommendationRequest, RecommendationResult } from './recommendationEngine';
 import {
+  canCompareBalance,
   createBalancePreview,
+  InvalidBalanceSnapshotError,
   saveBalanceSnapshot,
   type BalanceConfig,
 } from './balanceScenarios';
+import { isValidRecommendationResult } from './recommendationResult';
 
 const balanced = SUPPLY_PROFILES.find((profile) => profile.id === 'balanced')!;
 export const scienceThreePlusHistoryRequest: RecommendationRequest = {
@@ -109,5 +112,63 @@ describe('balance scenario previews', () => {
     expect(() => saveBalanceSnapshot([], { diversityLevel: 0, memoryMode: 'keep' }, {} as never)).toThrowError(
       expect.objectContaining({ name: 'InvalidBalanceSnapshotError', message: '저장할 균형 결과가 올바르지 않습니다.' }),
     );
+  });
+
+  it('requires a canonical complete result for compare and save', () => {
+    const config = { diversityLevel: 0, memoryMode: 'keep' } as const;
+    const valid = createBalancePreview(scienceThreePlusHistoryRequest, config, CARDS, balanced);
+    const malformed: RecommendationResult[] = [
+      { ...valid, request: { ...valid.request, interest: { ...valid.request.interest, science: -1 } } },
+      { ...valid, request: { ...valid.request, supplyProfileId: 'nature-rich' } },
+      { ...valid, request: { ...valid.request, round: -1 } },
+      { ...valid, request: { ...valid.request, feedSize: 7 as never } },
+      { ...valid, cards: [] },
+      { ...valid, cards: [...valid.cards, valid.cards[0]] },
+      { ...valid, cards: valid.cards.map((card, index) => index === 0 ? { ...card, title: '변조 카드' } : card) },
+      { ...valid, topicCounts: { ...valid.topicCounts, science: 8 } },
+      { ...valid, tokenBreakdown: { ...valid.tokenBreakdown, science: undefined! } },
+      { ...valid, explanations: valid.explanations.slice(0, 7) },
+      { ...valid, explanations: valid.explanations.map((item, index) => index === 0 ? { ...item, totalTokens: 999 } : item) },
+      { ...valid, inputFingerprint: 'tampered' },
+    ];
+    for (const result of malformed) {
+      expect(isValidRecommendationResult(result)).toBe(false);
+      expect(() => saveBalanceSnapshot([], config, result)).toThrowError(
+        expect.objectContaining({ name: 'InvalidBalanceSnapshotError' }),
+      );
+    }
+  });
+
+  it('accepts semantically exact results with different object key insertion order', () => {
+    const config = { diversityLevel: 0, memoryMode: 'keep' } as const;
+    const valid = createBalancePreview(scienceThreePlusHistoryRequest, config, CARDS, balanced);
+    const reordered = JSON.parse(JSON.stringify(valid), (_key, value) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+      return Object.fromEntries(Object.entries(value).reverse());
+    }) as RecommendationResult;
+    expect(isValidRecommendationResult(reordered)).toBe(true);
+    expect(saveBalanceSnapshot([], config, reordered).ok).toBe(true);
+  });
+
+  it('rejects malformed comparison arrays and non-prefix existing snapshots', () => {
+    const configs = [
+      { diversityLevel: 0, memoryMode: 'keep' },
+      { diversityLevel: 1, memoryMode: 'keep' },
+      { diversityLevel: 2, memoryMode: 'keep' },
+    ] as const;
+    let snapshots = [] as readonly import('./balanceScenarios').BalanceSnapshot[];
+    for (const config of configs) {
+      const saved = saveBalanceSnapshot(snapshots, config, createBalancePreview(scienceThreePlusHistoryRequest, config, CARDS, balanced));
+      if (saved.ok) snapshots = saved.snapshots;
+    }
+    expect(canCompareBalance(snapshots)).toBe(true);
+    const malformedComparison = { ...snapshots[0], result: { ...snapshots[0].result, cards: [] } };
+    expect(canCompareBalance([malformedComparison, snapshots[1], snapshots[2]])).toBe(false);
+    const valid = createBalancePreview(scienceThreePlusHistoryRequest, configs[0], CARDS, balanced);
+    const b = { ...snapshots[1], id: 'scenario-b' as const };
+    expect(() => saveBalanceSnapshot([b, snapshots[0]], configs[2], createBalancePreview(scienceThreePlusHistoryRequest, configs[2], CARDS, balanced))).toThrowError(InvalidBalanceSnapshotError);
+    expect(() => saveBalanceSnapshot([{ ...snapshots[0], id: 'scenario-a' as const }, { ...snapshots[0], id: 'scenario-a' as const, config: configs[1], result: createBalancePreview(scienceThreePlusHistoryRequest, configs[1], CARDS, balanced) }], configs[2], createBalancePreview(scienceThreePlusHistoryRequest, configs[2], CARDS, balanced))).toThrowError(InvalidBalanceSnapshotError);
+    expect(() => saveBalanceSnapshot([{ ...snapshots[0], result: { ...snapshots[0].result, cards: [] } }], configs[1], valid)).toThrowError(InvalidBalanceSnapshotError);
+    expect(canCompareBalance([{ ...snapshots[0], result: {} as never }, snapshots[1], snapshots[2]])).toBe(false);
   });
 });

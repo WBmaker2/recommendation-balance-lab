@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { CARDS } from '../data/cards';
 import { MISSIONS } from '../data/missions';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
-import type { InterestRecord } from './types';
-import { recommend, type RecommendationRequest } from './recommendationEngine';
+import type { ContentCard, InterestRecord } from './types';
+import { recommend, type RecommendationRequest, type RecommendationResult } from './recommendationEngine';
 import {
   canRunPrediction,
   experimentReducer,
   initialExperimentState,
   missionForStage,
   nextPracticeCard,
+  type ExperimentAction,
   type ExperimentState,
   type PredictionAnswer,
 } from './experimentState';
@@ -172,5 +173,68 @@ describe('추천 실험 상태 머신', () => {
     const second = initialExperimentState();
     first.interest.science = 99;
     expect(second.interest.science).toBe(0);
+  });
+
+  it('선택 결과는 외부 replacement 객체 변조와 독립이다', () => {
+    const active = experimentReducer(initialExperimentState(), { type: 'START' });
+    const externalReplacement = { ...card('science-3') };
+    const selected = experimentReducer(active, {
+      type: 'SELECT_CARD',
+      card: card('science-1'),
+      replacement: externalReplacement,
+    });
+
+    externalReplacement.title = '외부에서 변조한 제목';
+    expect(selected.choiceFeed.find((item) => item.id === 'science-3')?.title).toBe('자석의 힘');
+    expect(initialExperimentState().initialResult.cards.find((item) => item.id === 'science-1')?.title).toBe('달의 모양 기록');
+  });
+
+  it('예측 결과의 모든 중첩 구조를 외부 변조로부터 격리한다', () => {
+    const answer: PredictionAnswer = { focusDirection: 'increase', varietyDirection: 'decrease' };
+    const mutableResult = JSON.parse(JSON.stringify(scienceHeavyResult)) as RecommendationResult;
+    const compared = experimentReducer(stateAfterThreeSameTopicSelections, {
+      type: 'SUBMIT_PREDICTION', answer, result: mutableResult,
+    });
+
+    (mutableResult.cards as ContentCard[])[0].title = '변조된 카드 제목';
+    mutableResult.request.interest.science = 99;
+    mutableResult.topicCounts.science = 0;
+    mutableResult.tokenBreakdown.science.totalTokens = 999;
+    mutableResult.explanations[0].cardId = 'science-8';
+
+    expect(compared.changedResult).toEqual(scienceHeavyResult);
+  });
+
+  it('탐색 결과도 외부 RecommendationResult 변조와 독립이다', () => {
+    const answer: PredictionAnswer = { focusDirection: 'increase', varietyDirection: 'decrease' };
+    const compared = experimentReducer(stateAfterThreeSameTopicSelections, {
+      type: 'SUBMIT_PREDICTION', answer, result: scienceHeavyResult,
+    });
+    const ready = experimentReducer(compared, { type: 'SUBMIT_DISTRIBUTION', answer });
+    const externalResult = JSON.parse(JSON.stringify(initialResult)) as RecommendationResult;
+    const explored = experimentReducer(ready, {
+      type: 'RECORD_EXPLORATION', topicId: 'art', result: externalResult,
+    });
+
+    (externalResult.cards as ContentCard[])[0].title = '변조된 탐색 제목';
+    externalResult.request.interest.art = 88;
+    externalResult.topicCounts.art = 0;
+    externalResult.tokenBreakdown.art.totalTokens = 888;
+    externalResult.explanations[0].cardId = 'art-8';
+
+    expect(explored.explorationResult).toEqual(initialResult);
+  });
+
+  it('알 수 없는 런타임 action은 증거를 보존하고 안정적인 오류를 남긴다', () => {
+    const unknown = experimentReducer(
+      stateAfterThreeSameTopicSelections,
+      { type: 'UNKNOWN' } as unknown as ExperimentAction,
+    );
+    expect({ ...unknown, lastError: null }).toEqual({
+      ...stateAfterThreeSameTopicSelections,
+      lastError: null,
+    });
+    expect(unknown.lastError).toBe('알 수 없는 실험 동작입니다.');
+    expect(unknown).not.toBe(stateAfterThreeSameTopicSelections);
   });
 });

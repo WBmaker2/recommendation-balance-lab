@@ -113,7 +113,7 @@ const initialRecommendation = (): RecommendationResult =>
 
 const cloneCard = (card: ContentCard): ContentCard => ({ ...card });
 
-const cloneInitialResult = (result: RecommendationResult): RecommendationResult => ({
+const cloneResult = (result: RecommendationResult): RecommendationResult => ({
   ...result,
   request: { ...result.request, interest: { ...result.request.interest } },
   cards: result.cards.map(cloneCard),
@@ -125,7 +125,7 @@ const cloneInitialResult = (result: RecommendationResult): RecommendationResult 
 });
 
 export const initialExperimentState = (): ExperimentState => {
-  const initialResult = cloneInitialResult(initialRecommendation());
+  const initialResult = cloneResult(initialRecommendation());
   return {
     stage: 'intro',
     initialResult,
@@ -219,7 +219,7 @@ const reduceSelection = (
   interest[card.topicId] += 1;
   return {
     ...state,
-    choiceFeed: state.choiceFeed.map((item) => (item.id === card.id ? replacement : item)),
+    choiceFeed: state.choiceFeed.map((item) => (item.id === card.id ? cloneCard(replacement) : item)),
     focusTopicId,
     interest,
     selectionHistory,
@@ -238,7 +238,7 @@ const reducePrediction = (
     ...state,
     stage: 'comparison',
     prediction: { ...answer },
-    changedResult: result,
+    changedResult: cloneResult(result),
     lastError: null,
   };
 };
@@ -271,7 +271,7 @@ const reduceExploration = (
     return withError(state, '포커스가 아닌 주제를 한 번 탐색해 주세요.');
   }
   if (state.explorationResult) return withError(state, '탐색은 한 번만 기록할 수 있습니다.');
-  return { ...state, stage: 'balance', explorationResult: result, lastError: null };
+  return { ...state, stage: 'balance', explorationResult: cloneResult(result), lastError: null };
 };
 
 export const canRunPrediction = (state: ExperimentState): boolean =>
@@ -298,7 +298,7 @@ export const experimentReducer = (
     case 'RECORD_EXPLORATION':
       return reduceExploration(state, action.topicId, action.result);
     default:
-      return state;
+      return withError(state, '알 수 없는 실험 동작입니다.');
   }
 };
 

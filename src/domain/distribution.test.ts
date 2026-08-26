@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { CARDS } from '../data/cards';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
-import { recommend, type RecommendationResult } from './recommendationEngine';
+import { recommend } from './recommendationEngine';
 import type { ContentCard, TopicCounts } from './types';
+import type { DirectionAnswer, DistributionAnswer } from './experimentState';
 import {
   InvalidDistributionError,
   buildDistributionSummary,
@@ -21,15 +22,6 @@ const initialResult = recommend({
   round: 0,
   feedSize: 8,
 }, CARDS, balanced);
-const scienceHeavyResult = recommend({
-  interest: { ...zeroInterest, science: 3 },
-  diversityLevel: 0,
-  memoryMode: 'keep',
-  supplyProfileId: 'balanced',
-  round: 1,
-  feedSize: 8,
-}, CARDS, balanced);
-
 describe('분포 비교 도메인', () => {
   it('모든 주제의 정확한 정수 차이와 나타난 주제 수를 계산한다', () => {
     expect(compareDistributions(
@@ -81,43 +73,95 @@ describe('분포 비교 도메인', () => {
       .toThrow('분포 자료가 올바르지 않습니다.');
   });
 
-  it('포커스와 나타난 주제의 모든 방향을 사실 문장으로 만든다', () => {
-    const delta = compareDistributions(initialResult.topicCounts, scienceHeavyResult.topicCounts);
-    expect(buildDistributionSummary(delta, 'science')).toBe('과학 카드는 3장 늘고, 나타난 주제는 5개에서 4개로 줄었습니다.');
-    expect(isDistributionAnswerCorrect({ focusDirection: 'increase', varietyDirection: 'decrease' }, delta, 'science')).toBe(true);
-    expect(isDistributionAnswerCorrect({ focusDirection: 'same', varietyDirection: 'decrease' }, delta, 'science')).toBe(false);
-    expect(isDistributionAnswerCorrect({ focusDirection: 'increase', varietyDirection: 'best' as never }, delta, 'science')).toBe(false);
-
-    expect(buildDistributionSummary(compareDistributions(
-      { science: 2, art: 2, sports: 2, nature: 1, history: 1 },
-      { science: 1, art: 3, sports: 1, nature: 2, history: 1 },
-    ), 'science')).toBe('과학 카드는 1장 줄고, 나타난 주제는 5개로 같습니다.');
-    expect(buildDistributionSummary(compareDistributions(
-      { science: 2, art: 2, sports: 2, nature: 1, history: 1 },
-      { science: 2, art: 2, sports: 2, nature: 2, history: 0 },
-    ), 'science')).toBe('과학 카드는 그대로이고, 나타난 주제는 5개에서 4개로 줄었습니다.');
-    expect(buildDistributionSummary(compareDistributions(
-      { science: 1, art: 1, sports: 2, nature: 2, history: 2 },
-      { science: 2, art: 2, sports: 2, nature: 1, history: 1 },
-    ), 'science')).toBe('과학 카드는 1장 늘고, 나타난 주제는 5개로 같습니다.');
-    expect(buildDistributionSummary(compareDistributions(
-      { science: 1, art: 1, sports: 1, nature: 1, history: 4 },
-      { science: 2, art: 2, sports: 2, nature: 1, history: 1 },
-    ), 'science')).toBe('과학 카드는 1장 늘고, 나타난 주제는 5개로 같습니다.');
-    expect(buildDistributionSummary(compareDistributions(
-      { science: 1, art: 1, sports: 1, nature: 1, history: 4 },
-      { science: 2, art: 2, sports: 2, nature: 2, history: 0 },
-    ), 'science')).toBe('과학 카드는 1장 늘고, 나타난 주제는 5개에서 4개로 줄었습니다.');
-    expect(buildDistributionSummary(compareDistributions(
-      { science: 3, art: 2, sports: 2, nature: 1, history: 0 },
-      { science: 3, art: 2, sports: 1, nature: 1, history: 1 },
-    ), 'science')).toBe('과학 카드는 그대로이고, 나타난 주제는 4개에서 5개로 늘었습니다.');
+  it('focusDirection × varietyDirection 9개 조합을 표의 사실로 판정한다', () => {
+    const cases: readonly {
+      name: string;
+      before: TopicCounts;
+      after: TopicCounts;
+      answer: DistributionAnswer;
+      summary: string;
+    }[] = [
+      {
+        name: 'increase + increase',
+        before: { science: 1, art: 7, sports: 0, nature: 0, history: 0 },
+        after: { science: 2, art: 2, sports: 2, nature: 2, history: 0 },
+        answer: { focusDirection: 'increase', varietyDirection: 'increase' },
+        summary: '과학 카드는 1장 늘고, 나타난 주제는 2개에서 4개로 늘었습니다.',
+      },
+      {
+        name: 'increase + same',
+        before: { science: 1, art: 7, sports: 0, nature: 0, history: 0 },
+        after: { science: 2, art: 6, sports: 0, nature: 0, history: 0 },
+        answer: { focusDirection: 'increase', varietyDirection: 'same' },
+        summary: '과학 카드는 1장 늘고, 나타난 주제는 2개로 같습니다.',
+      },
+      {
+        name: 'increase + decrease',
+        before: { science: 2, art: 2, sports: 2, nature: 1, history: 1 },
+        after: { science: 3, art: 3, sports: 2, nature: 0, history: 0 },
+        answer: { focusDirection: 'increase', varietyDirection: 'decrease' },
+        summary: '과학 카드는 1장 늘고, 나타난 주제는 5개에서 3개로 줄었습니다.',
+      },
+      {
+        name: 'same + increase',
+        before: { science: 2, art: 6, sports: 0, nature: 0, history: 0 },
+        after: { science: 2, art: 2, sports: 2, nature: 2, history: 0 },
+        answer: { focusDirection: 'same', varietyDirection: 'increase' },
+        summary: '과학 카드는 그대로이고, 나타난 주제는 2개에서 4개로 늘었습니다.',
+      },
+      {
+        name: 'same + same',
+        before: { science: 2, art: 3, sports: 3, nature: 0, history: 0 },
+        after: { science: 2, art: 4, sports: 2, nature: 0, history: 0 },
+        answer: { focusDirection: 'same', varietyDirection: 'same' },
+        summary: '과학 카드는 그대로이고, 나타난 주제는 3개로 같습니다.',
+      },
+      {
+        name: 'same + decrease',
+        before: { science: 2, art: 2, sports: 2, nature: 1, history: 1 },
+        after: { science: 2, art: 3, sports: 3, nature: 0, history: 0 },
+        answer: { focusDirection: 'same', varietyDirection: 'decrease' },
+        summary: '과학 카드는 그대로이고, 나타난 주제는 5개에서 3개로 줄었습니다.',
+      },
+      {
+        name: 'decrease + increase',
+        before: { science: 3, art: 5, sports: 0, nature: 0, history: 0 },
+        after: { science: 2, art: 2, sports: 2, nature: 2, history: 0 },
+        answer: { focusDirection: 'decrease', varietyDirection: 'increase' },
+        summary: '과학 카드는 1장 줄고, 나타난 주제는 2개에서 4개로 늘었습니다.',
+      },
+      {
+        name: 'decrease + same',
+        before: { science: 3, art: 5, sports: 0, nature: 0, history: 0 },
+        after: { science: 2, art: 6, sports: 0, nature: 0, history: 0 },
+        answer: { focusDirection: 'decrease', varietyDirection: 'same' },
+        summary: '과학 카드는 1장 줄고, 나타난 주제는 2개로 같습니다.',
+      },
+      {
+        name: 'decrease + decrease',
+        before: { science: 3, art: 2, sports: 2, nature: 1, history: 0 },
+        after: { science: 2, art: 3, sports: 3, nature: 0, history: 0 },
+        answer: { focusDirection: 'decrease', varietyDirection: 'decrease' },
+        summary: '과학 카드는 1장 줄고, 나타난 주제는 4개에서 3개로 줄었습니다.',
+      },
+    ];
+    const opposite: Record<DirectionAnswer, DirectionAnswer> = {
+      increase: 'decrease',
+      same: 'increase',
+      decrease: 'same',
+    };
+    for (const testCase of cases) {
+      const delta = compareDistributions(testCase.before, testCase.after);
+      expect(buildDistributionSummary(delta, 'science'), testCase.name).toBe(testCase.summary);
+      expect(isDistributionAnswerCorrect(testCase.answer, delta, 'science'), testCase.name).toBe(true);
+      expect(isDistributionAnswerCorrect({
+        ...testCase.answer,
+        focusDirection: opposite[testCase.answer.focusDirection],
+      }, delta, 'science'), testCase.name).toBe(false);
+      expect(isDistributionAnswerCorrect({
+        ...testCase.answer,
+        varietyDirection: opposite[testCase.answer.varietyDirection],
+      }, delta, 'science'), testCase.name).toBe(false);
+    }
   });
 });
-
-const inconsistent = (result: RecommendationResult): RecommendationResult => ({
-  ...result,
-  topicCounts: { science: 8, art: 0, sports: 0, nature: 0, history: 0 },
-});
-
-export { inconsistent };

@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -234,17 +234,29 @@ describe('미션 2: 추천 분포 전후 비교', () => {
       expect(screen.getByRole('columnheader', { name: heading })).toBeInTheDocument();
     }
     expect(screen.getByText('과학 카드는 3장 늘고, 나타난 주제는 5개에서 4개로 줄었습니다.')).toBeInTheDocument();
-    expect(screen.getByText('5장')).toBeInTheDocument();
-    expect(screen.getByText('+3장')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '분포 문장 확인' })).toBeDisabled();
-    for (const topicId of ['science', 'art', 'sports', 'nature', 'history']) {
-      expect(document.getElementById(`distribution-${topicId}-before`)).toBeInTheDocument();
-      expect(document.getElementById(`distribution-${topicId}-after`)).toBeInTheDocument();
+    const evidence = {
+      science: { before: 2, after: 5, delta: '+3장' },
+      art: { before: 2, after: 1, delta: '-1장' },
+      sports: { before: 2, after: 1, delta: '-1장' },
+      nature: { before: 1, after: 1, delta: '0장' },
+      history: { before: 1, after: 0, delta: '-1장' },
+    } as const;
+    for (const [topicId, counts] of Object.entries(evidence)) {
+      const beforeCell = document.getElementById(`distribution-${topicId}-before`);
+      const afterCell = document.getElementById(`distribution-${topicId}-after`);
+      expect(beforeCell).toBeInTheDocument();
+      expect(afterCell).toBeInTheDocument();
+      expect(beforeCell).toHaveTextContent(`${counts.before}장`);
+      expect(afterCell).toHaveTextContent(`${counts.after}장`);
+      const beforeBar = beforeCell!.querySelector('[data-distribution-bar="before"]');
+      const afterBar = afterCell!.querySelector('[data-distribution-bar="after"]');
+      expect(beforeBar).toHaveAttribute('aria-hidden', 'true');
+      expect(afterBar).toHaveAttribute('aria-hidden', 'true');
+      expect(beforeBar).toHaveStyle({ width: `${(counts.before / 8) * 100}%` });
+      expect(afterBar).toHaveStyle({ width: `${(counts.after / 8) * 100}%` });
+      expect(within(beforeCell!.closest('tr')!).getByText(counts.delta)).toBeInTheDocument();
     }
-    expect(document.querySelector('[data-distribution-bar="before"]')).toHaveAttribute('aria-hidden', 'true');
-    expect(document.querySelector('[data-distribution-bar="before"]')).toHaveStyle({ width: '25%' });
-    expect(document.querySelector('[data-distribution-bar="after"]')).toHaveStyle({ width: '62.5%' });
-    expect(screen.getAllByText('-1장')).toHaveLength(3);
     expect(screen.getAllByRole('radio', { name: '늘었다' })).toHaveLength(2);
     expect(screen.getAllByRole('radio', { name: '같다' })).toHaveLength(2);
     expect(screen.getAllByRole('radio', { name: '줄었다' })).toHaveLength(2);

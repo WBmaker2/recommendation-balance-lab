@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CARDS } from '../data/cards';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
 import { TOPIC_ORDER } from '../data/topics';
-import type { RecommendationRequest } from './recommendationEngine';
+import { recommend, type RecommendationRequest } from './recommendationEngine';
 import { auditPairsEqual, buildAuditPair, validateAuditPair } from './auditComparison';
 import { cloneRecommendationResult } from './recommendationResult';
 import type { ContentCard, SupplyProfile } from './types';
@@ -159,5 +159,46 @@ describe('controlled supply audit comparison', () => {
     expect(validateAuditPair({} as never).map((issue) => issue.code)).not.toContain('same-supply');
     const noChange = { ...pair, natureRich: cloneRecommendationResult(pair.balanced) };
     expect(validateAuditPair(noChange).map((issue) => issue.code)).toEqual(['same-supply', 'no-result-change']);
+  });
+
+  it('requires issue-free pairs before equality, including self-equality', () => {
+    const pair = buildAuditPair(requestFor('science'), CARDS, SUPPLY_PROFILES);
+    const interestMismatch = { ...pair, invariantInterest: { ...pair.invariantInterest, science: 99 } };
+    const diversityMismatch = { ...pair, invariantDiversityLevel: 2 as const };
+    const memoryMismatch = { ...pair, invariantMemoryMode: 'clear' as const };
+    const sameResult = { ...pair, natureRich: cloneRecommendationResult(pair.balanced) };
+    const balancedSupply = SUPPLY_PROFILES.find((supply) => supply.id === 'balanced')!;
+    const roundMismatch = {
+      ...pair,
+      balanced: cloneRecommendationResult(recommend({ ...requestFor('science'), round: 2 }, CARDS, balancedSupply)),
+    };
+    const invalidPairs = [interestMismatch, diversityMismatch, memoryMismatch, sameResult, roundMismatch];
+    for (const invalid of invalidPairs) {
+      expect(validateAuditPair(invalid).length).toBeGreaterThan(0);
+      expect(auditPairsEqual(invalid, invalid)).toBe(false);
+    }
+    const equal = buildAuditPair(requestFor('science'), CARDS, SUPPLY_PROFILES);
+    expect(validateAuditPair(equal)).toEqual([]);
+    expect(auditPairsEqual(pair, equal)).toBe(true);
+  });
+
+  it('does not freeze global cards or supply graphs and rejects a global card alias', () => {
+    const cardsBefore = structuredClone(CARDS);
+    const suppliesBefore = structuredClone(SUPPLY_PROFILES);
+    const globalObjects: object[] = [CARDS, ...CARDS, SUPPLY_PROFILES, ...SUPPLY_PROFILES];
+    for (const supply of SUPPLY_PROFILES) globalObjects.push(supply.baseTokens, supply.candidateCardIds);
+    expect(globalObjects.every((object) => !Object.isFrozen(object))).toBe(true);
+    const pair = buildAuditPair(requestFor('science'), CARDS, SUPPLY_PROFILES);
+    expect(pair.balanced.cards.every((card) => card !== CARDS.find((global) => global.id === card.id))).toBe(true);
+    expect(pair.natureRich.cards.every((card) => card !== CARDS.find((global) => global.id === card.id))).toBe(true);
+    expect(globalObjects.every((object) => !Object.isFrozen(object))).toBe(true);
+    expect(CARDS).toEqual(cardsBefore);
+    expect(SUPPLY_PROFILES).toEqual(suppliesBefore);
+    const globalCard = CARDS.find((card) => card.id === pair.balanced.cards[0].id)!;
+    const cardsWithAlias = [...pair.balanced.cards];
+    cardsWithAlias[0] = globalCard;
+    const tampered = { ...pair, balanced: { ...pair.balanced, cards: cardsWithAlias } };
+    expect(validateAuditPair(tampered)).toContainEqual({ code: 'invalid-feed-size' });
+    expect(auditPairsEqual(tampered, tampered)).toBe(false);
   });
 });

@@ -215,6 +215,7 @@ const stableObjectEqual = (left: unknown, right: unknown): boolean => {
 export const auditPairsEqual = (left: AuditPair, right: AuditPair): boolean => {
   try {
     if (!isOwnedAuditPair(left) || !isOwnedAuditPair(right)) return false;
+    if (validateAuditPair(left).length > 0 || validateAuditPair(right).length > 0) return false;
     if (!isValidRecommendationResult(left.balanced) || !isValidRecommendationResult(left.natureRich)
       || !isValidRecommendationResult(right.balanced) || !isValidRecommendationResult(right.natureRich)) return false;
     return stableObjectEqual(left.invariantInterest, right.invariantInterest)

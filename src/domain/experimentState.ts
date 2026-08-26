@@ -2,6 +2,7 @@ import { CARDS } from '../data/cards';
 import { MISSIONS } from '../data/missions';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
 import { recommend, type RecommendationResult } from './recommendationEngine';
+import { countTopicCards } from './distribution';
 import type {
   CardId,
   ContentCard,
@@ -149,8 +150,10 @@ const withError = (state: ExperimentState, message: string): ExperimentState => 
 const direction = (before: number, after: number): DirectionAnswer =>
   after > before ? 'increase' : after < before ? 'decrease' : 'same';
 
-const varietyCount = (result: RecommendationResult): number =>
-  topics.filter((topicId) => result.topicCounts[topicId] > 0).length;
+const varietyCount = (result: RecommendationResult): number => {
+  const counts = countTopicCards(result.cards);
+  return topics.filter((topicId) => counts[topicId] > 0).length;
+};
 
 const factualDistributionAnswer = (
   initialResult: RecommendationResult,
@@ -158,8 +161,8 @@ const factualDistributionAnswer = (
   focusTopicId: TopicId,
 ): DistributionAnswer => ({
   focusDirection: direction(
-    initialResult.topicCounts[focusTopicId],
-    changedResult.topicCounts[focusTopicId],
+    countTopicCards(initialResult.cards)[focusTopicId],
+    countTopicCards(changedResult.cards)[focusTopicId],
   ),
   varietyDirection: direction(varietyCount(initialResult), varietyCount(changedResult)),
 });

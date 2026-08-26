@@ -1,4 +1,4 @@
-import { TOPICS } from '../../data/topics';
+import { TOPIC_ORDER, TOPICS } from '../../data/topics';
 import { TopicBadge } from '../../components/common/TopicBadge';
 import type { TopicId } from '../../domain/types';
 import type { DistributionDelta } from '../../domain/distribution';
@@ -25,8 +25,9 @@ export function DistributionTable({ delta }: DistributionTableProps): React.JSX.
         </tr>
       </thead>
       <tbody>
-        {TOPICS.map((topic) => {
-          const topicId = topic.id as TopicId;
+        {TOPIC_ORDER.map((topicId: TopicId) => {
+          const topic = TOPICS.find((item) => item.id === topicId);
+          if (!topic) throw new Error('분포 표 주제 정의가 올바르지 않습니다.');
           const before = delta.before[topicId];
           const after = delta.after[topicId];
           return (

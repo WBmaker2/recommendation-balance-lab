@@ -50,6 +50,7 @@ export const countTopicCards = (cards: readonly ContentCard[]): TopicCounts => {
   const seen = new Set<string>();
   const counts = Object.fromEntries(TOPIC_ORDER.map((topicId) => [topicId, 0])) as TopicCounts;
   for (const card of cards) {
+    if (!card || typeof card !== 'object') return invalid();
     const known = knownCards.get(card.id);
     if (!known || seen.has(card.id) || card.topicId !== known.topicId || !isTopicId(card.topicId)) return invalid();
     seen.add(card.id);

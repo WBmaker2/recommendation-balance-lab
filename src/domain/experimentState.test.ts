@@ -137,6 +137,27 @@ describe('추천 실험 상태 머신', () => {
     expect(right.distributionAnswer).toEqual(answer);
   });
 
+  it('저장된 topicCounts가 틀려도 실제 카드 분포의 정답으로 탐색을 연다', () => {
+    const answer: PredictionAnswer = { focusDirection: 'increase', varietyDirection: 'decrease' };
+    const compared = experimentReducer(stateAfterThreeSameTopicSelections, {
+      type: 'SUBMIT_PREDICTION', answer, result: scienceHeavyResult,
+    });
+    const inconsistent = {
+      ...compared,
+      initialResult: {
+        ...compared.initialResult,
+        topicCounts: { science: 8, art: 0, sports: 0, nature: 0, history: 0 },
+      },
+      changedResult: {
+        ...compared.changedResult!,
+        topicCounts: { science: 8, art: 0, sports: 0, nature: 0, history: 0 },
+      },
+    };
+    const opened = experimentReducer(inconsistent, { type: 'SUBMIT_DISTRIBUTION', answer });
+    expect(opened.stage).toBe('exploration');
+    expect(opened.distributionAnswer).toEqual(answer);
+  });
+
   it('포커스가 아닌 탐색 한 번 뒤 균형 단계로 이동하고 중복 탐색은 막는다', () => {
     const answer: PredictionAnswer = { focusDirection: 'increase', varietyDirection: 'decrease' };
     const compared = experimentReducer(stateAfterThreeSameTopicSelections, {

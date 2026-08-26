@@ -237,6 +237,14 @@ describe('미션 2: 추천 분포 전후 비교', () => {
     expect(screen.getByText('5장')).toBeInTheDocument();
     expect(screen.getByText('+3장')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '분포 문장 확인' })).toBeDisabled();
+    for (const topicId of ['science', 'art', 'sports', 'nature', 'history']) {
+      expect(document.getElementById(`distribution-${topicId}-before`)).toBeInTheDocument();
+      expect(document.getElementById(`distribution-${topicId}-after`)).toBeInTheDocument();
+    }
+    expect(document.querySelector('[data-distribution-bar="before"]')).toHaveAttribute('aria-hidden', 'true');
+    expect(document.querySelector('[data-distribution-bar="before"]')).toHaveStyle({ width: '25%' });
+    expect(document.querySelector('[data-distribution-bar="after"]')).toHaveStyle({ width: '62.5%' });
+    expect(screen.getAllByText('-1장')).toHaveLength(3);
     expect(screen.getAllByRole('radio', { name: '늘었다' })).toHaveLength(2);
     expect(screen.getAllByRole('radio', { name: '같다' })).toHaveLength(2);
     expect(screen.getAllByRole('radio', { name: '줄었다' })).toHaveLength(2);

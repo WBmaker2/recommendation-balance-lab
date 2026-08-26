@@ -63,4 +63,49 @@ describe('controlled supply audit comparison', () => {
     expect(() => buildAuditPair(requestFor('science'), CARDS, [])).toThrowError('감사 비교 입력이 올바르지 않습니다.');
     expect(validateAuditPair(null as unknown as never)).toContainEqual({ code: 'invalid-feed-size' });
   });
+
+  it('rejects shared nested evidence references and accepts only owned canonical evidence', () => {
+    const pair = buildAuditPair(requestFor('science'), CARDS, SUPPLY_PROFILES);
+    const sharedInterest = pair.invariantInterest;
+    const sharedCards = pair.balanced.cards;
+    const aliasedInterest = {
+      ...pair,
+      balanced: {
+        ...pair.balanced,
+        request: { ...pair.balanced.request, interest: sharedInterest },
+      },
+    };
+    const aliasedResultEvidence = {
+      ...pair,
+      natureRich: {
+        ...pair.natureRich,
+        request: { ...pair.natureRich.request, interest: pair.balanced.request.interest },
+        cards: sharedCards,
+        topicCounts: pair.balanced.topicCounts,
+        tokenBreakdown: pair.balanced.tokenBreakdown,
+        explanations: pair.balanced.explanations,
+      },
+    };
+    expect(validateAuditPair(aliasedInterest)).toContainEqual({ code: 'invalid-feed-size' });
+    expect(validateAuditPair(aliasedResultEvidence)).toContainEqual({ code: 'invalid-feed-size' });
+    expect(auditPairsEqual(aliasedInterest, pair)).toBe(false);
+    expect(auditPairsEqual(aliasedResultEvidence, pair)).toBe(false);
+    expect(validateAuditPair(pair)).toEqual([]);
+  });
+
+  it('rejects extra, symbol, non-enumerable, sparse, and wrong changedField keys', () => {
+    const pair = buildAuditPair(requestFor('science'), CARDS, SUPPLY_PROFILES);
+    const extra = { ...pair, hidden: true } as unknown as typeof pair;
+    const symbolKey = Symbol('hidden');
+    Object.defineProperty(extra, symbolKey, { value: true, enumerable: false });
+    const nonEnumerable = { ...pair } as typeof pair & { hidden?: boolean };
+    Object.defineProperty(nonEnumerable, 'hidden', { value: true, enumerable: false });
+    const wrongField = { ...pair, changedField: 'interest' } as unknown as typeof pair;
+    expect(validateAuditPair(extra)).toEqual([{ code: 'invalid-feed-size' }]);
+    expect(validateAuditPair(nonEnumerable)).toEqual([{ code: 'invalid-feed-size' }]);
+    expect(validateAuditPair(wrongField)).toEqual([{ code: 'invalid-feed-size' }]);
+    expect(auditPairsEqual(extra, pair)).toBe(false);
+    expect(auditPairsEqual(nonEnumerable, pair)).toBe(false);
+    expect(auditPairsEqual(wrongField, pair)).toBe(false);
+  });
 });

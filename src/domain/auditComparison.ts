@@ -49,6 +49,55 @@ const freezeDeep = <T>(value: T): T => {
 
 const cloneAuditResult = (result: RecommendationResult): RecommendationResult => cloneRecommendationResult(result);
 
+const AUDIT_PAIR_KEYS = [
+  'balanced',
+  'natureRich',
+  'invariantInterest',
+  'invariantDiversityLevel',
+  'invariantMemoryMode',
+  'changedField',
+] as const;
+
+const hasExactOwnKeys = (value: unknown, requiredKeys: readonly string[]): boolean => {
+  try {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) return false;
+    const keys = Reflect.ownKeys(value);
+    if (keys.length !== requiredKeys.length) return false;
+    const required = new Set(requiredKeys);
+    return keys.every((key) => typeof key === 'string' && required.has(key))
+      && requiredKeys.every((key) => Object.hasOwn(value, key)
+        && Object.getOwnPropertyDescriptor(value, key)?.enumerable === true);
+  } catch {
+    return false;
+  }
+};
+
+const hasOwnedReferences = (value: unknown): boolean => {
+  const seen = new WeakSet<object>();
+  const visit = (current: unknown): boolean => {
+    if (!current || typeof current !== 'object') return true;
+    if (seen.has(current)) return false;
+    seen.add(current);
+    try {
+      return Reflect.ownKeys(current).every((key) => visit((current as Record<PropertyKey, unknown>)[key]));
+    } catch {
+      return false;
+    }
+  };
+  return visit(value);
+};
+
+const isExactAuditPairShape = (value: unknown): value is AuditPair => {
+  if (!hasExactOwnKeys(value, AUDIT_PAIR_KEYS)) return false;
+  const pair = value as AuditPair;
+  return hasExactOwnKeys(pair.invariantInterest, TOPIC_ORDER)
+    && pair.changedField === 'supplyProfileId';
+};
+
+const isOwnedAuditPair = (value: unknown): value is AuditPair => (
+  isExactAuditPairShape(value) && hasOwnedReferences(value)
+);
+
 export const cloneAuditPair = (pair: AuditPair): AuditPair => ({
   balanced: cloneAuditResult(pair.balanced),
   natureRich: cloneAuditResult(pair.natureRich),
@@ -143,7 +192,8 @@ export const validateAuditPair = (candidate: AuditPair): readonly AuditIssue[] =
       issues.push({ code: 'round-mismatch' });
     }
     if (left?.request?.supplyProfileId === right?.request?.supplyProfileId) issues.push({ code: 'same-supply' });
-    const validResults = isValidRecommendationResult(left) && isValidRecommendationResult(right)
+    const validResults = isOwnedAuditPair(candidate)
+      && isValidRecommendationResult(left) && isValidRecommendationResult(right)
       && left.cards.length === 8 && right.cards.length === 8;
     if (!validResults) {
       issues.push({ code: 'invalid-feed-size' });
@@ -173,6 +223,7 @@ const stableObjectEqual = (left: unknown, right: unknown): boolean => {
 
 export const auditPairsEqual = (left: AuditPair, right: AuditPair): boolean => {
   try {
+    if (!isOwnedAuditPair(left) || !isOwnedAuditPair(right)) return false;
     return stableObjectEqual(left.invariantInterest, right.invariantInterest)
       && left.invariantDiversityLevel === right.invariantDiversityLevel
       && left.invariantMemoryMode === right.invariantMemoryMode

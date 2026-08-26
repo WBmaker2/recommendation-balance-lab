@@ -47,4 +47,18 @@ describe('미션 5 감사 reducer gates', () => {
     expect(right.auditPair).toEqual(recorded.auditPair);
     expect(experimentReducer(right, { type: 'SUBMIT_AUDIT_ANSWER', answer: 'supply-condition' })).toEqual(right);
   });
+
+  it('rejects an action pair that shares nested evidence references', () => {
+    const expected = buildAuditPair(request, CARDS, SUPPLY_PROFILES);
+    const aliased = {
+      ...expected,
+      natureRich: {
+        ...expected.natureRich,
+        request: { ...expected.natureRich.request, interest: expected.balanced.request.interest },
+      },
+    };
+    const rejected = experimentReducer(readyState(), { type: 'RECORD_AUDIT', pair: aliased });
+    expect(rejected.auditPair).toBeNull();
+    expect(rejected.lastError).toBe('감사 비교가 가상 규칙과 일치하지 않습니다.');
+  });
 });

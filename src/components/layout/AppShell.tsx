@@ -18,7 +18,7 @@ export function AppShell({ stage, onReset, children }: AppShellProps): React.JSX
         <h1>추천 알고리즘 균형 실험실</h1>
         <StageProgress stage={stage} />
         <ModelBoundaryNotice />
-        {stage === 'intro' ? null : <ResetExperimentButton onReset={onReset} />}
+        {stage === 'intro' || stage === 'complete' ? null : <ResetExperimentButton onReset={onReset} />}
       </header>
       <main id="main-content" tabIndex={-1}>
         {children}

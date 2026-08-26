@@ -9,7 +9,7 @@ import { cloneRecommendationResult, recommendationResultsEqual } from './recomme
 import { reduceAuditAnswer, reduceAuditRecord } from './experimentStateAudit';
 import { reduceReportCompletion, reduceReportUpdate } from './experimentStateReport';
 import { emptyReportDraft, type ReportAssessment, type ReportDraft } from './reportAssessment';
-import type { AuditPair } from './auditComparison';
+import { auditPairsEqual, buildAuditPair, cloneAuditPair, validateAuditPair, type AuditPair } from './auditComparison';
 import {
   canCompareBalance,
   createBalancePreview,
@@ -83,7 +83,7 @@ export type ExperimentAction =
   | { type: 'RECORD_EXPLORATION'; topicId: TopicId; result: RecommendationResult }
   | { type: 'SET_BALANCE_CONFIG'; config: BalanceConfig }
   | { type: 'SAVE_BALANCE_SNAPSHOT'; snapshot: BalanceSnapshot }
-  | { type: 'COMPLETE_BALANCE_COMPARISON' }
+  | { type: 'COMPLETE_BALANCE_COMPARISON'; pair?: AuditPair }
   | { type: 'RECORD_AUDIT'; pair: AuditPair }
   | { type: 'SUBMIT_AUDIT_ANSWER'; answer: import('./types').InfluenceFactor }
   | { type: 'UPDATE_REPORT'; draft: ReportDraft }
@@ -371,10 +371,26 @@ const reduceBalanceSnapshot = (state: ExperimentState, snapshot: BalanceSnapshot
   }
 };
 
-const reduceBalanceCompletion = (state: ExperimentState): ExperimentState => {
+const reduceBalanceCompletion = (state: ExperimentState, supplied?: AuditPair): ExperimentState => {
   if (state.stage !== 'balance') return state;
   if (!canCompareBalance(state.balanceSnapshots)) return withError(state, '서로 다른 설정 세 개를 저장해 주세요.');
-  return { ...state, stage: 'audit', balanceCompared: true, lastError: null };
+  if (!state.changedResult) return withError(state, '감사 비교에 필요한 선택 결과가 없습니다.');
+  let expected: AuditPair;
+  try {
+    expected = buildAuditPair(state.changedResult.request, CARDS, SUPPLY_PROFILES);
+  } catch {
+    return withError(state, '감사 비교를 만들 수 없습니다.');
+  }
+  if (validateAuditPair(expected).length > 0 || (supplied && !auditPairsEqual(supplied, expected))) {
+    return withError(state, '감사 비교가 가상 규칙과 일치하지 않습니다.');
+  }
+  return {
+    ...state,
+    stage: 'audit',
+    balanceCompared: true,
+    auditPair: cloneAuditPair(expected),
+    lastError: null,
+  };
 };
 
 export const canRunPrediction = (state: ExperimentState): boolean =>
@@ -405,7 +421,7 @@ export const experimentReducer = (
     case 'SAVE_BALANCE_SNAPSHOT':
       return reduceBalanceSnapshot(state, action.snapshot);
     case 'COMPLETE_BALANCE_COMPARISON':
-      return reduceBalanceCompletion(state);
+      return reduceBalanceCompletion(state, action.pair);
     case 'RECORD_AUDIT':
       return reduceAuditRecord(state, action.pair);
     case 'SUBMIT_AUDIT_ANSWER':

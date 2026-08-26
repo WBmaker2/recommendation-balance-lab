@@ -19,7 +19,9 @@ import {
   type BalanceConfig,
   type SaveSnapshotResult,
 } from '../../domain/balanceScenarios';
+import { cloneDirectionAnswer, isExactDirectionAnswer } from '../../domain/answerValidation';
 import { buildAuditPair } from '../../domain/auditComparison';
+import { canAdvanceToAudit } from '../../domain/balanceEvidenceValidation';
 import { reportEvidenceForState } from '../../domain/experimentStateReport';
 import { assessReport, isReportDraft, type ReportAssessment, type ReportDraft } from '../../domain/reportAssessment';
 import { recommend } from '../../domain/recommendationEngine';
@@ -47,16 +49,7 @@ const balancedSupply = SUPPLY_PROFILES.find((item) => item.id === 'balanced') ??
 })();
 const supplyFor = (id: 'balanced' | 'nature-rich') => SUPPLY_PROFILES.find((item) => item.id === id);
 
-const validDirection = (value: unknown): value is PredictionAnswer['focusDirection'] => (
-  value === 'increase' || value === 'same' || value === 'decrease'
-);
-
-const validPrediction = (answer: unknown): answer is PredictionAnswer => (
-  Boolean(answer)
-  && typeof answer === 'object'
-  && validDirection((answer as PredictionAnswer).focusDirection)
-  && validDirection((answer as PredictionAnswer).varietyDirection)
-);
+const validPrediction = isExactDirectionAnswer;
 
 const validFactor = (factor: unknown): factor is InfluenceFactor => (
   factor === 'choice-record' || factor === 'balance-setting' || factor === 'supply-condition'
@@ -118,7 +111,7 @@ export function useExperimentController(): ExperimentController {
           round: 1,
           feedSize: 8,
         }, CARDS, balancedSupply);
-        dispatch({ type: 'SUBMIT_PREDICTION', answer: { ...answer }, result });
+        dispatch({ type: 'SUBMIT_PREDICTION', answer: cloneDirectionAnswer(answer), result });
       } catch {
         // No action is dispatched when a canonical result cannot be derived.
       }
@@ -126,7 +119,7 @@ export function useExperimentController(): ExperimentController {
 
     const submitDistribution = (answer: DistributionAnswer): void => {
       if (state.stage === 'comparison' && state.changedResult && state.focusTopicId && validPrediction(answer)) {
-        dispatch({ type: 'SUBMIT_DISTRIBUTION', answer: { ...answer } });
+        dispatch({ type: 'SUBMIT_DISTRIBUTION', answer: cloneDirectionAnswer(answer) });
       }
     };
 
@@ -163,7 +156,8 @@ export function useExperimentController(): ExperimentController {
     };
 
     const compareBalance = (): void => {
-      if (state.stage !== 'balance' || !canCompareBalance(state.balanceSnapshots) || !state.changedResult) return;
+      if (!canAdvanceToAudit(state) || !canCompareBalance(state.balanceSnapshots) || !state.focusTopicId) return;
+      if (!state.changedResult) return;
       try {
         const pair = buildAuditPair(state.changedResult.request, CARDS, SUPPLY_PROFILES);
         dispatch({ type: 'COMPLETE_BALANCE_COMPARISON', pair });

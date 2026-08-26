@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import App from '../../App';
@@ -10,7 +10,7 @@ async function reachBalance(user: ReturnType<typeof userEvent.setup>): Promise<v
   expect(document.activeElement).toBe(screen.getByRole('heading', { name: '미션 1. 선택의 흔적' }));
   const firstSlot = screen.getAllByRole('article', { name: /추천 카드/ })[0];
   for (let count = 0; count < 3; count += 1) {
-    await user.click(firstSlot.querySelector<HTMLButtonElement>('button')!);
+    await user.click(within(firstSlot).getByRole('button', { name: '이 카드 선택' }));
   }
   await user.click(screen.getAllByRole('radio', { name: '늘어난다' })[0]);
   await user.click(screen.getAllByRole('radio', { name: '줄어든다' })[1]);

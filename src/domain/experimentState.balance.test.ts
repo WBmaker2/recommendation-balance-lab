@@ -15,20 +15,29 @@ const baseRequest = {
 };
 const readyState = (): ExperimentState => {
   const state = initialExperimentState();
-  const result = createBalancePreview(baseRequest, { diversityLevel: 0, memoryMode: 'keep' }, CARDS, supply);
+  const changedRequest = { ...baseRequest, interest: { science: 3, art: 0, sports: 0, nature: 0, history: 0 }, round: 1 };
+  const explorationRequest = { ...changedRequest, interest: { ...changedRequest.interest, art: 1 }, round: 2 };
+  const changed = createBalancePreview(changedRequest, { diversityLevel: 0, memoryMode: 'keep' }, CARDS, supply);
+  const exploration = createBalancePreview(explorationRequest, { diversityLevel: 0, memoryMode: 'keep' }, CARDS, supply);
   return {
     ...state,
     stage: 'balance',
-    interest: { ...baseRequest.interest },
+    interest: { ...explorationRequest.interest },
     focusTopicId: 'science',
-    explorationResult: result,
-    changedResult: result,
+    explorationResult: exploration,
+    changedResult: changed,
   };
 };
 const snapshotFor = (state: ExperimentState, id: BalanceSnapshot['id'], diversityLevel: 0 | 1 | 2, memoryMode: 'keep' | 'clear'): BalanceSnapshot => {
   const result = createBalancePreview(state.explorationResult!.request, { diversityLevel, memoryMode }, CARDS, supply);
   return { id, config: { diversityLevel, memoryMode }, result };
 };
+
+const snapshotForRequest = (request: typeof baseRequest, id: BalanceSnapshot['id'], diversityLevel: 0 | 1 | 2): BalanceSnapshot => ({
+  id,
+  config: { diversityLevel, memoryMode: 'keep' },
+  result: createBalancePreview(request, { diversityLevel, memoryMode: 'keep' }, CARDS, supply),
+});
 
 describe('balance reducer gates', () => {
   it('starts with isolated balance state and changes config without changing interest', () => {
@@ -88,5 +97,28 @@ describe('balance reducer gates', () => {
     expect(completed.stage).toBe('audit');
     expect(completed.balanceCompared).toBe(true);
     expect(experimentReducer(completed, { type: 'COMPLETE_BALANCE_COMPARISON' })).toEqual(completed);
+  });
+
+  it('rejects canonical-looking snapshots from an unrelated exploration request', () => {
+    const state = readyState();
+    const unrelatedRequest = {
+      ...baseRequest,
+      interest: { science: 0, art: 2, sports: 0, nature: 0, history: 0 },
+      round: 9,
+    };
+    const malformed = {
+      ...state,
+      balanceSnapshots: [
+        snapshotForRequest(unrelatedRequest, 'scenario-a', 0),
+        snapshotForRequest(unrelatedRequest, 'scenario-b', 1),
+        snapshotForRequest(unrelatedRequest, 'scenario-c', 2),
+      ],
+    };
+
+    const reduced = experimentReducer(malformed, { type: 'COMPLETE_BALANCE_COMPARISON' });
+
+    expect(reduced.stage).toBe('balance');
+    expect(reduced.balanceCompared).toBe(false);
+    expect(reduced.auditPair).toBeNull();
   });
 });

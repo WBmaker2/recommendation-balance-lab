@@ -10,6 +10,8 @@ import { reduceAuditAnswer, reduceAuditRecord } from './experimentStateAudit';
 import { reduceReportCompletion, reduceReportUpdate } from './experimentStateReport';
 import { emptyReportDraft, type ReportAssessment, type ReportDraft } from './reportAssessment';
 import { auditPairsEqual, buildAuditPair, cloneAuditPair, validateAuditPair, type AuditPair } from './auditComparison';
+import { cloneDirectionAnswer, isExactDirectionAnswer } from './answerValidation';
+import { canAdvanceToAudit } from './balanceEvidenceValidation';
 import {
   canCompareBalance,
   createBalancePreview,
@@ -192,11 +194,7 @@ const factualDistributionAnswer = (
   varietyDirection: direction(varietyCount(initialResult), varietyCount(changedResult)),
 });
 
-const validDirection = (value: unknown): value is DirectionAnswer =>
-  value === 'increase' || value === 'same' || value === 'decrease';
-
-const validAnswer = (answer: PredictionAnswer): boolean =>
-  validDirection(answer.focusDirection) && validDirection(answer.varietyDirection);
+const validAnswer = (answer: unknown): answer is PredictionAnswer => isExactDirectionAnswer(answer);
 
 const reduceStart = (state: ExperimentState): ExperimentState => {
   if (state.stage !== 'intro') return withError(state, '실험은 처음 화면에서 시작해 주세요.');
@@ -265,7 +263,7 @@ const reducePrediction = (
   return {
     ...state,
     stage: 'comparison',
-    prediction: { ...answer },
+    prediction: cloneDirectionAnswer(answer),
     changedResult: cloneResult(result),
     lastError: null,
   };
@@ -280,11 +278,11 @@ const reduceDistribution = (state: ExperimentState, answer: DistributionAnswer):
   if (answer.focusDirection !== expected.focusDirection || answer.varietyDirection !== expected.varietyDirection) {
     return {
       ...state,
-      distributionAnswer: { ...answer },
+      distributionAnswer: cloneDirectionAnswer(answer),
       lastError: '두 목록의 주제 수를 다시 관찰해 보세요.',
     };
   }
-  return { ...state, stage: 'exploration', distributionAnswer: { ...answer }, lastError: null };
+  return { ...state, stage: 'exploration', distributionAnswer: cloneDirectionAnswer(answer), lastError: null };
 };
 
 const reduceExploration = (
@@ -374,6 +372,7 @@ const reduceBalanceSnapshot = (state: ExperimentState, snapshot: BalanceSnapshot
 const reduceBalanceCompletion = (state: ExperimentState, supplied?: AuditPair): ExperimentState => {
   if (state.stage !== 'balance') return state;
   if (!canCompareBalance(state.balanceSnapshots)) return withError(state, '서로 다른 설정 세 개를 저장해 주세요.');
+  if (!canAdvanceToAudit(state)) return withError(state, '감사 비교에 필요한 실험 근거가 올바르지 않습니다.');
   if (!state.changedResult) return withError(state, '감사 비교에 필요한 선택 결과가 없습니다.');
   let expected: AuditPair;
   try {

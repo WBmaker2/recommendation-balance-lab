@@ -39,15 +39,30 @@ const probeAbsentDescriptor = (entry: BrowserDescriptor, installSpy: () => unkno
 
 const captureBrowserSpies = () => {
   const descriptors = browserDescriptors();
-  for (const { target, key, descriptor } of descriptors) {
-    if (!descriptor) Object.defineProperty(target, key, { configurable: true, writable: true, value: vi.fn() });
+  let installed = false;
+  try {
+    for (const { target, key } of descriptors) {
+      if (!Reflect.deleteProperty(target, key) || Object.getOwnPropertyDescriptor(target, key)) {
+        throw new Error(`브라우저 API descriptor를 삭제할 수 없습니다: ${String(key)}`);
+      }
+      Object.defineProperty(target, key, { configurable: true, writable: true, value: vi.fn() });
+    }
+    const spies = {
+      descriptors,
+      setItem: vi.spyOn(Storage.prototype, 'setItem'),
+      fetch: vi.spyOn(globalThis, 'fetch'),
+      sendBeacon: vi.spyOn(navigator, 'sendBeacon'),
+    };
+    installed = true;
+    return spies;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error(String(error));
+  } finally {
+    if (!installed) {
+      vi.restoreAllMocks();
+      restoreDescriptors(descriptors);
+    }
   }
-  return {
-    descriptors,
-    setItem: vi.spyOn(Storage.prototype, 'setItem'),
-    fetch: vi.spyOn(globalThis, 'fetch'),
-    sendBeacon: vi.spyOn(navigator, 'sendBeacon'),
-  };
 };
 
 afterEach(() => {

@@ -4,6 +4,16 @@ import { SUPPLY_PROFILES } from '../data/supplyProfiles';
 import { TOPIC_ORDER } from '../data/topics';
 import { recommend, type RecommendationResult } from './recommendationEngine';
 import { countTopicCards } from './distribution';
+import { applyExploration, InvalidExplorationError } from './exploration';
+import { cloneRecommendationResult, recommendationResultsEqual } from './recommendationResult';
+import {
+  canCompareBalance,
+  createBalancePreview,
+  isBalanceConfig,
+  saveBalanceSnapshot,
+  type BalanceConfig,
+  type BalanceSnapshot,
+} from './balanceScenarios';
 import type {
   CardId,
   ContentCard,
@@ -11,6 +21,9 @@ import type {
   MissionDefinition,
   TopicId,
 } from './types';
+
+export { applyExploration, findExplorationCandidates, InvalidExplorationError } from './exploration';
+export type { BalanceConfig, BalanceSnapshot } from './balanceScenarios';
 
 export type ExperimentStage =
   | 'intro'
@@ -48,6 +61,9 @@ export interface ExperimentState {
   changedResult: RecommendationResult | null;
   distributionAnswer: DistributionAnswer | null;
   explorationResult: RecommendationResult | null;
+  balanceConfig: BalanceConfig;
+  balanceSnapshots: readonly BalanceSnapshot[];
+  balanceCompared: boolean;
   lastError: string | null;
 }
 
@@ -57,19 +73,15 @@ export type ExperimentAction =
   | { type: 'SUBMIT_PREDICTION'; answer: PredictionAnswer; result: RecommendationResult }
   | { type: 'SUBMIT_DISTRIBUTION'; answer: DistributionAnswer }
   | { type: 'RECORD_EXPLORATION'; topicId: TopicId; result: RecommendationResult }
+  | { type: 'SET_BALANCE_CONFIG'; config: BalanceConfig }
+  | { type: 'SAVE_BALANCE_SNAPSHOT'; snapshot: BalanceSnapshot }
+  | { type: 'COMPLETE_BALANCE_COMPARISON' }
   | { type: 'RESET' };
 
 export class PracticeCardExhaustedError extends Error {
   constructor() {
     super('연습 카드가 소진되었습니다.');
     this.name = 'PracticeCardExhaustedError';
-  }
-}
-
-export class InvalidExplorationError extends Error {
-  constructor() {
-    super('탐색 주제가 올바르지 않습니다.');
-    this.name = 'InvalidExplorationError';
   }
 }
 
@@ -84,16 +96,9 @@ const zeroInterest = (): InterestRecord => ({
 const balancedSupply = SUPPLY_PROFILES.find((item) => item.id === 'balanced');
 if (!balancedSupply) throw new Error('균형 공급 프로필이 필요합니다.');
 
-const isSameCard = (left: ContentCard, right: ContentCard): boolean =>
-  left.id === right.id &&
-  left.topicId === right.topicId &&
-  left.title === right.title &&
-  left.summary === right.summary;
-
-const isTopicId = (value: unknown): value is TopicId =>
-  typeof value === 'string' && (TOPIC_ORDER as readonly string[]).includes(value);
-
 const toIdSet = (usedIds: Iterable<string>): Set<string> => new Set(usedIds);
+const isSameCard = (left: ContentCard, right: ContentCard): boolean =>
+  left.id === right.id && left.topicId === right.topicId && left.title === right.title && left.summary === right.summary;
 
 export const nextPracticeCard = (
   topicId: TopicId,
@@ -124,16 +129,7 @@ const initialRecommendation = (): RecommendationResult =>
 
 const cloneCard = (card: ContentCard): ContentCard => ({ ...card });
 
-const cloneResult = (result: RecommendationResult): RecommendationResult => ({
-  ...result,
-  request: { ...result.request, interest: { ...result.request.interest } },
-  cards: result.cards.map(cloneCard),
-  topicCounts: { ...result.topicCounts },
-  tokenBreakdown: Object.fromEntries(
-    TOPIC_ORDER.map((topicId) => [topicId, { ...result.tokenBreakdown[topicId] }]),
-  ) as RecommendationResult['tokenBreakdown'],
-  explanations: result.explanations.map((explanation) => ({ ...explanation })),
-});
+const cloneResult = cloneRecommendationResult;
 
 export const initialExperimentState = (): ExperimentState => {
   const initialResult = cloneResult(initialRecommendation());
@@ -148,6 +144,9 @@ export const initialExperimentState = (): ExperimentState => {
     changedResult: null,
     distributionAnswer: null,
     explorationResult: null,
+    balanceConfig: { diversityLevel: 0, memoryMode: 'keep' },
+    balanceSnapshots: [],
+    balanceCompared: false,
     lastError: null,
   };
 };
@@ -163,46 +162,6 @@ const direction = (before: number, after: number): DirectionAnswer =>
 const varietyCount = (result: RecommendationResult): number => {
   const counts = countTopicCards(result.cards);
   return TOPIC_ORDER.filter((topicId) => counts[topicId] > 0).length;
-};
-
-export const applyExploration = (
-  interest: InterestRecord,
-  topicId: TopicId,
-  focusTopicId: TopicId,
-): InterestRecord => {
-  if (!isTopicId(topicId)) throw new InvalidExplorationError();
-  if (topicId === focusTopicId) return interest;
-  return Object.fromEntries(
-    TOPIC_ORDER.map((id) => [id, interest[id] + (id === topicId ? 1 : 0)]),
-  ) as InterestRecord;
-};
-
-export const findExplorationCandidates = (
-  result: RecommendationResult,
-  cards: readonly ContentCard[],
-  focusTopicId: TopicId,
-): readonly ContentCard[] => {
-  const counts = countTopicCards(result.cards);
-  const selectedIds = new Set(result.cards.map((item) => item.id));
-  const seenProvidedIds = new Set<string>();
-  const canonicalCards = new Map(CARDS.map((item) => [item.id, item]));
-  const firstByTopic = new Map<TopicId, ContentCard>();
-  for (const candidate of cards) {
-    if (!candidate || typeof candidate !== 'object') continue;
-    if (seenProvidedIds.has(candidate.id)) continue;
-    seenProvidedIds.add(candidate.id);
-    const canonical = canonicalCards.get(candidate.id);
-    if (!canonical || selectedIds.has(candidate.id) || !isSameCard(canonical, candidate)) continue;
-    if (!firstByTopic.has(canonical.topicId)) firstByTopic.set(canonical.topicId, candidate);
-  }
-  const orderedTopics = TOPIC_ORDER
-    .filter((topicId) => topicId !== focusTopicId)
-    .sort((left, right) => counts[left] - counts[right] || TOPIC_ORDER.indexOf(left) - TOPIC_ORDER.indexOf(right));
-
-  return orderedTopics.flatMap((topicId) => {
-    const candidate = firstByTopic.get(topicId);
-    return candidate ? [cloneCard(candidate)] : [];
-  });
 };
 
 const factualDistributionAnswer = (
@@ -347,7 +306,7 @@ const reduceExploration = (
   } catch {
     return withError(state, '탐색 결과가 가상 규칙과 일치하지 않습니다.');
   }
-  if (!deepEqual(result, expectedResult)) {
+  if (!recommendationResultsEqual(result, expectedResult)) {
     return withError(state, '탐색 결과가 가상 규칙과 일치하지 않습니다.');
   }
   return {
@@ -359,19 +318,47 @@ const reduceExploration = (
   };
 };
 
-const deepEqual = (left: unknown, right: unknown): boolean => {
-  if (Object.is(left, right)) return true;
-  if (typeof left !== 'object' || left === null || typeof right !== 'object' || right === null) return false;
-  if (Array.isArray(left) || Array.isArray(right)) {
-    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
-    return left.every((item, index) => deepEqual(item, right[index]));
+const reduceBalanceConfig = (state: ExperimentState, config: BalanceConfig): ExperimentState => {
+  if (state.stage !== 'balance') return withError(state, '지금은 균형을 조절하는 단계가 아닙니다.');
+  if (!isBalanceConfig(config)) return withError(state, '균형 설정이 올바르지 않습니다.');
+  return { ...state, balanceConfig: { ...config }, lastError: null };
+};
+
+const reduceBalanceSnapshot = (state: ExperimentState, snapshot: BalanceSnapshot): ExperimentState => {
+  if (state.stage !== 'balance') return withError(state, '지금은 균형을 조절하는 단계가 아닙니다.');
+  if (!state.explorationResult || !snapshot || typeof snapshot !== 'object' || !isBalanceConfig(snapshot.config)) {
+    return withError(state, '저장할 설정 결과가 가상 규칙과 일치하지 않습니다.');
   }
-  const leftRecord = left as Record<string, unknown>;
-  const rightRecord = right as Record<string, unknown>;
-  const leftKeys = Object.keys(leftRecord);
-  const rightKeys = Object.keys(rightRecord);
-  return leftKeys.length === rightKeys.length
-    && leftKeys.every((key) => Object.hasOwn(rightRecord, key) && deepEqual(leftRecord[key], rightRecord[key]));
+  const expectedId = `scenario-${String.fromCharCode(97 + state.balanceSnapshots.length)}`;
+  let expectedResult: RecommendationResult;
+  try {
+    const supply = SUPPLY_PROFILES.find((item) => item.id === state.explorationResult!.request.supplyProfileId);
+    if (!supply) throw new Error('missing supply');
+    expectedResult = createBalancePreview(state.explorationResult.request, snapshot.config, CARDS, supply);
+  } catch {
+    return withError(state, '저장할 설정 결과가 가상 규칙과 일치하지 않습니다.');
+  }
+  if (snapshot.id !== expectedId || !recommendationResultsEqual(snapshot.result, expectedResult)) {
+    return withError(state, '저장할 설정 결과가 가상 규칙과 일치하지 않습니다.');
+  }
+  try {
+    const saved = saveBalanceSnapshot(state.balanceSnapshots, snapshot.config, expectedResult);
+    if (!saved.ok) {
+      return withError(
+        state,
+        saved.reason === 'duplicate-config' ? '이미 저장한 설정입니다.' : '세 개의 설정만 저장할 수 있습니다.',
+      );
+    }
+    return { ...state, balanceSnapshots: saved.snapshots, lastError: null };
+  } catch {
+    return withError(state, '저장할 설정 결과가 가상 규칙과 일치하지 않습니다.');
+  }
+};
+
+const reduceBalanceCompletion = (state: ExperimentState): ExperimentState => {
+  if (state.stage !== 'balance') return state;
+  if (!canCompareBalance(state.balanceSnapshots)) return withError(state, '서로 다른 설정 세 개를 저장해 주세요.');
+  return { ...state, stage: 'audit', balanceCompared: true, lastError: null };
 };
 
 export const canRunPrediction = (state: ExperimentState): boolean =>
@@ -397,6 +384,12 @@ export const experimentReducer = (
       return reduceDistribution(state, action.answer);
     case 'RECORD_EXPLORATION':
       return reduceExploration(state, action.topicId, action.result);
+    case 'SET_BALANCE_CONFIG':
+      return reduceBalanceConfig(state, action.config);
+    case 'SAVE_BALANCE_SNAPSHOT':
+      return reduceBalanceSnapshot(state, action.snapshot);
+    case 'COMPLETE_BALANCE_COMPARISON':
+      return reduceBalanceCompletion(state);
     default:
       return withError(state, '알 수 없는 실험 동작입니다.');
   }

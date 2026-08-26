@@ -15,11 +15,14 @@ import { PredictionPanel } from './features/prediction/PredictionPanel';
 import { DistributionComparison } from './features/comparison/DistributionComparison';
 import { DistributionTable } from './features/comparison/DistributionTable';
 import { ExplorationPanel } from './features/exploration/ExplorationPanel';
+import { BalanceControlPanel } from './features/balance/BalanceControlPanel';
+import { ScenarioComparison } from './features/balance/ScenarioComparison';
 import { CARDS } from './data/cards';
 import { SUPPLY_PROFILES } from './data/supplyProfiles';
 import { TOPIC_ORDER, TOPICS } from './data/topics';
 import { buildCardExplanation, recommend } from './domain/recommendationEngine';
 import { compareDistributions, countTopicCards } from './domain/distribution';
+import { createBalancePreview, saveBalanceSnapshot } from './domain/balanceScenarios';
 import type { CardId, TopicId } from './domain/types';
 import type { PredictionAnswer } from './domain/experimentState';
 import type { RecommendationResult } from './domain/recommendationEngine';
@@ -95,6 +98,11 @@ export default function App(): React.JSX.Element {
     feedSize: 8,
   }, CARDS, balancedSupply), [state.interest]);
 
+  const balancePreview = useMemo(() => {
+    if (!state.explorationResult) return null;
+    return createBalancePreview(state.explorationResult.request, state.balanceConfig, CARDS, balancedSupply);
+  }, [state.balanceConfig, state.explorationResult]);
+
   useEffect(() => {
     const count = state.selectionHistory.length;
     if (count > previousSelectionCount.current) {
@@ -160,6 +168,26 @@ export default function App(): React.JSX.Element {
     }
   };
 
+  const handleBalanceSave = (): void => {
+    setActionError('');
+    if (!state.explorationResult || !balancePreview) return;
+    try {
+      const saved = saveBalanceSnapshot(state.balanceSnapshots, state.balanceConfig, balancePreview);
+      if (!saved.ok) {
+        setActionError(saved.reason === 'duplicate-config' ? '이미 저장한 설정입니다.' : '세 개의 설정만 저장할 수 있습니다.');
+        return;
+      }
+      dispatch({ type: 'SAVE_BALANCE_SNAPSHOT', snapshot: saved.snapshots[saved.snapshots.length - 1] });
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : '저장할 균형 결과가 올바르지 않습니다.');
+    }
+  };
+
+  const handleBalanceConfigChange = (config: import('./domain/balanceScenarios').BalanceConfig): void => {
+    setActionError('');
+    dispatch({ type: 'SET_BALANCE_CONFIG', config });
+  };
+
   return (
     <AppShell stage={state.stage} onReset={() => dispatch({ type: 'RESET' })}>
       {state.stage === 'intro' ? (
@@ -215,11 +243,28 @@ export default function App(): React.JSX.Element {
               />
             </>
           ) : state.stage === 'balance' && state.changedResult && state.explorationResult && state.focusTopicId ? (
-            <ExplorationOutcome
-              before={state.changedResult}
-              after={state.explorationResult}
-              focusTopicId={state.focusTopicId}
-            />
+            <>
+              {state.lastError || actionError ? <p role="alert">{state.lastError || actionError}</p> : null}
+              <ExplorationOutcome
+                before={state.changedResult}
+                after={state.explorationResult}
+                focusTopicId={state.focusTopicId}
+              />
+              <BalanceControlPanel
+                config={state.balanceConfig}
+                snapshots={state.balanceSnapshots}
+                onConfigChange={handleBalanceConfigChange}
+                onSave={handleBalanceSave}
+                onCompare={() => dispatch({ type: 'COMPLETE_BALANCE_COMPARISON' })}
+              />
+              {balancePreview ? <RuleTransparencyPanel result={balancePreview} /> : null}
+              <ScenarioComparison snapshots={state.balanceSnapshots} />
+            </>
+          ) : state.stage === 'audit' ? (
+            <>
+              <p>같은 선택도 콘텐츠 공급 조건과 설정에 따라 다른 목록이 될 수 있습니다.</p>
+              <p>이 결과는 가상의 단순 규칙을 살펴본 학습용 증거입니다.</p>
+            </>
           ) : (
             <p>다음 활동을 준비하고 있습니다.</p>
           )}

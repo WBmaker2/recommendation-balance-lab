@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TOPICS } from '../../data/topics';
 import type { PredictionAnswer, DirectionAnswer } from '../../domain/experimentState';
 import type { TopicId } from '../../domain/types';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export interface PredictionPanelProps {
   focusTopicId: TopicId;
@@ -22,6 +23,7 @@ export function PredictionPanel({
 }: PredictionPanelProps): React.JSX.Element {
   const [focusDirection, setFocusDirection] = useState<DirectionAnswer | null>(null);
   const [varietyDirection, setVarietyDirection] = useState<DirectionAnswer | null>(null);
+  const reducedMotion = useReducedMotion();
   const enabled = selectionCount === 3 && focusDirection !== null && varietyDirection !== null;
   const focusLabel = TOPICS.find((topic) => topic.id === focusTopicId)?.label ?? focusTopicId;
 
@@ -65,14 +67,15 @@ export function PredictionPanel({
         ))}
       </fieldset>
       <p>같은 주제 선택: {selectionCount}/3</p>
+      {enabled && reducedMotion ? <p className="gi-pulse__label">지금 할 차례</p> : null}
       <button
         type="button"
-        className="gi-pulse"
-        data-gi-pulse={enabled ? 'true' : 'false'}
+        className={enabled && !reducedMotion ? 'gi-pulse' : undefined}
+        data-gi-pulse={enabled && !reducedMotion ? 'true' : 'false'}
         disabled={!enabled}
         onClick={submit}
       >
-        다음 목록 예측
+        <span className="gi-pulse__label">다음 목록 예측</span>
       </button>
     </section>
   );

@@ -1,0 +1,79 @@
+#root > div {
+  margin: 0 auto;
+  max-width: var(--content-width);
+  padding: var(--space-2);
+}
+
+header,
+main,
+footer {
+  background: var(--color-surface);
+  margin-block: var(--space-2);
+  padding: var(--space-2);
+}
+
+article,
+[data-feed-layout="fixed-eight"] > article,
+[data-pattern] {
+  border-radius: var(--radius-card);
+}
+
+[data-feed-layout="fixed-eight"] {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+
+[data-feed-layout="fixed-eight"] > article {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  padding: var(--space-2);
+}
+
+button {
+  border: 2px solid var(--color-action-strong);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.topic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+}
+
+.topic--science { background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 6px 6px; }
+.topic--art { background-image: repeating-linear-gradient(135deg, transparent 0 5px, currentColor 5px 6px); }
+.topic--sports { background-image: linear-gradient(90deg, transparent 48%, currentColor 49% 51%, transparent 52%), linear-gradient(0deg, transparent 48%, currentColor 49% 51%, transparent 52%); background-size: 8px 8px; }
+.topic--nature { background-image: repeating-radial-gradient(ellipse at 0 100%, transparent 0 5px, currentColor 6px 7px); }
+.topic--history { background-image: repeating-linear-gradient(45deg, transparent 0 4px, currentColor 4px 5px), repeating-linear-gradient(-45deg, transparent 0 4px, currentColor 4px 5px); }
+
+.distribution-static,
+.feed-transition {
+  border: 2px solid var(--color-action);
+  border-radius: var(--radius-card);
+  margin-block: var(--space-2);
+  padding: var(--space-2);
+}
+
+dialog {
+  border: 2px solid var(--color-navy);
+  border-radius: var(--radius-card);
+  max-width: min(92vw, 36rem);
+  padding: var(--space-3);
+}
+
+@media (max-width: 560px) {
+  #root > div { padding: var(--space-1); }
+  header, main, footer { padding: var(--space-1); }
+}

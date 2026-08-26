@@ -24,6 +24,7 @@ export function RecommendationCard({
 
   return (
     <article
+      className="recommendation-card"
       aria-labelledby={titleId}
       data-topic-id={card.topicId}
       data-pattern={topic.pattern}

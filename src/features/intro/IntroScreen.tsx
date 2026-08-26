@@ -54,7 +54,7 @@ export function IntroScreen({ onStart }: IntroScreenProps): React.JSX.Element {
         <p>기록 오류 검사, 사용 시간 진단, 개별 주장 팩트체크 활동이 아닙니다.</p>
       </section>
 
-      <button type="button" className="gi-pulse" onClick={onStart}>
+      <button type="button" onClick={onStart}>
         실험 시작
       </button>
     </section>

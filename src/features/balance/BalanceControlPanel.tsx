@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { canCompareBalance, type BalanceConfig, type BalanceSnapshot } from '../../domain/balanceScenarios';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export interface BalanceControlPanelProps {
   config: BalanceConfig;
@@ -19,6 +20,7 @@ export function BalanceControlPanel({
   onCompare,
 }: BalanceControlPanelProps): React.JSX.Element {
   const compareReady = canCompareBalance(snapshots);
+  const reducedMotion = useReducedMotion();
   const [compareTriggered, setCompareTriggered] = useState(false);
   const compareLock = useRef(false);
   const duplicate = snapshots.some(
@@ -83,10 +85,11 @@ export function BalanceControlPanel({
         onClick={handleCompare}
         disabled={!compareReady || compareTriggered}
         data-gi-pulse={compareReady && !compareTriggered ? 'true' : 'false'}
-        className={compareReady && !compareTriggered ? 'gi-pulse' : undefined}
+        className={compareReady && !compareTriggered && !reducedMotion ? 'gi-pulse' : undefined}
       >
-        균형 비교
+        <span className="gi-pulse__label">균형 비교</span>
       </button>
+      {compareReady && !compareTriggered && reducedMotion ? <p className="gi-pulse__label">지금 할 차례</p> : null}
       <p>서로 다른 설정 {snapshots.length}/3개 저장됨</p>
     </section>
   );

@@ -11,6 +11,7 @@ import type { RecommendationResult } from '../../domain/recommendationEngine';
 import type { DirectionAnswer, DistributionAnswer } from '../../domain/experimentState';
 import type { TopicId } from '../../domain/types';
 import { DistributionTable } from './DistributionTable';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export interface DistributionComparisonProps {
   before: RecommendationResult;
@@ -37,6 +38,7 @@ export function DistributionComparison({
   const [varietyDirection, setVarietyDirection] = useState<DirectionAnswer | null>(null);
   const [wrong, setWrong] = useState(false);
   const successfulSubmission = useRef(false);
+  const reducedMotion = useReducedMotion();
   const delta: DistributionDelta = compareDistributions(countTopicCards(before.cards), countTopicCards(after.cards));
   const enabled = focusDirection !== null && varietyDirection !== null;
   const answer = focusDirection && varietyDirection ? { focusDirection, varietyDirection } : null;
@@ -58,6 +60,7 @@ export function DistributionComparison({
       <h3 id="distribution-comparison-title">추천 분포 비교</h3>
       <p>미션 2 비교 화면을 준비했습니다.</p>
       <p>{buildDistributionSummary(delta, focusTopicId)}</p>
+      {reducedMotion ? <p className="distribution-static">지금 할 차례: 표의 카드 수와 문장을 확인해 보세요.</p> : null}
       <DistributionTable delta={delta} />
       <p>빠져서 나타나지 않은 주제: {delta.missingTopics.length > 0 ? delta.missingTopics.map(labelFor).join(', ') : '없음'}</p>
       <fieldset>
@@ -98,8 +101,6 @@ export function DistributionComparison({
       ) : null}
       <button
         type="button"
-        className="gi-pulse"
-        data-gi-pulse={enabled ? 'true' : 'false'}
         disabled={!enabled}
         onClick={submit}
       >

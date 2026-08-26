@@ -11,8 +11,31 @@ import { SUPPLY_PROFILES } from './data/supplyProfiles';
 import { recommend, type RecommendationResult } from './domain/recommendationEngine';
 import { countTopicCards } from './domain/distribution';
 import { DistributionComparison } from './features/comparison/DistributionComparison';
+import { BalanceControlPanel } from './features/balance/BalanceControlPanel';
+import { PredictionPanel } from './features/prediction/PredictionPanel';
+import { FeedTransition } from './features/feed/FeedTransition';
+import { useReducedMotion } from './hooks/useReducedMotion';
+import { createBalancePreview, type BalanceSnapshot } from './domain/balanceScenarios';
 
 afterEach(cleanup);
+
+const visualSupply = SUPPLY_PROFILES.find((profile) => profile.id === 'balanced')!;
+const visualRequest = {
+  interest: { science: 0, art: 0, sports: 0, nature: 0, history: 0 },
+  diversityLevel: 0 as const, memoryMode: 'keep' as const, supplyProfileId: 'balanced' as const, round: 0, feedSize: 8 as const,
+};
+const visualInitial = recommend(visualRequest, CARDS, visualSupply);
+const visualChanged = recommend({ ...visualRequest, interest: { ...visualRequest.interest, science: 3 }, round: 1 }, CARDS, visualSupply);
+const visualSnapshots: readonly BalanceSnapshot[] = [0, 1, 2].map((diversityLevel, index) => ({
+  id: (`scenario-${String.fromCharCode(97 + index)}`) as BalanceSnapshot['id'],
+  config: { diversityLevel: diversityLevel as 0 | 1 | 2, memoryMode: 'keep' },
+  result: createBalancePreview(visualRequest, { diversityLevel: diversityLevel as 0 | 1 | 2, memoryMode: 'keep' }, CARDS, visualSupply),
+}));
+
+function MotionProbe(): React.JSX.Element {
+  const reduced = useReducedMotion();
+  return <output>{reduced ? 'reduce' : 'full'}</output>;
+}
 
 describe('추천 알고리즘 균형 실험실 시작 화면', () => {
   it('학습 대상과 피드백 고리, 비목표와 개인정보 경계를 안내한다', () => {
@@ -381,5 +404,58 @@ describe('미션 3: 의도적인 주제 탐색', () => {
     if (!before || !after) return;
     render(<ExplorationOutcome before={before} after={after} focusTopicId="science" />);
     expect(screen.getByText('관심 토큰은 늘었지만 8장 배분 결과는 아직 같았습니다.')).toBeInTheDocument();
+  });
+});
+
+describe('교실용 시각 체계와 모션 대체', () => {
+  it('주제 이름과 아이콘에 비색상 pattern hook을 함께 제공한다', () => {
+    render(<App />);
+    for (const topic of TOPICS) {
+      expect(document.querySelector(`.topic--${topic.id}`)).toHaveTextContent(`${topic.icon}${topic.label}`);
+    }
+  });
+
+  it('현재 필요한 예측 또는 균형 비교 하나만 pulse한다', async () => {
+    const user = userEvent.setup();
+    render(<PredictionPanel focusTopicId="science" selectionCount={3} onSubmit={vi.fn()} />);
+    expect(screen.getByRole('button', { name: '다음 목록 예측' })).not.toHaveClass('gi-pulse');
+    await user.click(screen.getAllByRole('radio', { name: '늘어난다' })[0]);
+    await user.click(screen.getAllByRole('radio', { name: '줄어든다' })[1]);
+    expect(screen.getByRole('button', { name: '다음 목록 예측' })).toHaveClass('gi-pulse');
+    expect(document.querySelectorAll('.gi-pulse')).toHaveLength(1);
+    cleanup();
+    render(<BalanceControlPanel config={{ diversityLevel: 2, memoryMode: 'keep' }} snapshots={visualSnapshots} onConfigChange={vi.fn()} onSave={vi.fn()} onCompare={vi.fn()} />);
+    expect(screen.getByRole('button', { name: '균형 비교' })).toHaveClass('gi-pulse');
+    expect(document.querySelectorAll('.gi-pulse')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: '균형 비교' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '현재 설정 저장' })).not.toHaveClass('gi-pulse');
+  });
+
+  it('reduced motion preference changes live and cleans up safely', () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+    let listener: ((event: MediaQueryListEvent) => void) | undefined;
+    let matches = false;
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: vi.fn(() => ({ matches, media: '(prefers-reduced-motion: reduce)', addEventListener: (_: string, callback: (event: MediaQueryListEvent) => void) => { listener = callback; }, removeEventListener: vi.fn() })) });
+    const view = render(<MotionProbe />);
+    expect(screen.getByText('full')).toBeInTheDocument();
+    matches = true;
+    act(() => listener?.({ matches: true } as MediaQueryListEvent));
+    expect(screen.getByText('reduce')).toBeInTheDocument();
+    view.unmount();
+    if (original) Object.defineProperty(window, 'matchMedia', original);
+    else Reflect.deleteProperty(window, 'matchMedia');
+    const absent = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+    Reflect.deleteProperty(window, 'matchMedia');
+    render(<MotionProbe />);
+    expect(screen.getByText('full')).toBeInTheDocument();
+    cleanup();
+    if (absent) Object.defineProperty(window, 'matchMedia', absent);
+  });
+
+  it('reduced motion keeps the static distribution evidence and skips card transition', () => {
+    render(<FeedTransition before={visualInitial} after={visualChanged} reducedMotion />);
+    expect(screen.queryByLabelText('카드 재배치 장면')).not.toBeInTheDocument();
+    expect(screen.getByText('지금 할 차례')).toBeVisible();
+    expect(screen.getByRole('table', { name: '추천 주제 분포 전후 비교' })).toBeVisible();
   });
 });

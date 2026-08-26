@@ -326,7 +326,12 @@ describe('미션 3: 의도적인 주제 탐색', () => {
     const { user, focusTopic } = await openExploration();
     expect(screen.getByRole('heading', { name: '미션 3. 탐색 버튼' })).toBeInTheDocument();
     expect(screen.getByText('이 선택은 실제 취향이 아니라 가상 모형을 시험하는 행동입니다.')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: '낯선 주제 열기' })).toHaveLength(3);
+    const explorationButtons = screen.getAllByRole('button', { name: '낯선 주제 열기' });
+    expect(explorationButtons).toHaveLength(3);
+    for (const button of explorationButtons) {
+      expect(button).not.toHaveClass('gi-pulse');
+      expect(button).not.toHaveAttribute('data-gi-pulse');
+    }
     for (const candidate of screen.getAllByRole('article', { name: /탐색 카드/ })) {
       expect(candidate.getAttribute('data-topic-id')).not.toBe(focusTopic);
     }

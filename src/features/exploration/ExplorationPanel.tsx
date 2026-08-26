@@ -43,8 +43,6 @@ export function ExplorationPanel({
                   <p>{card.summary}</p>
                   <button
                     type="button"
-                    className="gi-pulse"
-                    data-gi-pulse="true"
                     onClick={() => onExplore(card.topicId)}
                   >
                     낯선 주제 열기

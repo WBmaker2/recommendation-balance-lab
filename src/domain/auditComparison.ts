@@ -2,6 +2,7 @@ import { CARDS } from '../data/cards';
 import { SUPPLY_PROFILES } from '../data/supplyProfiles';
 import { TOPIC_ORDER } from '../data/topics';
 import { countTopicCards } from './distribution';
+import { hasOwnedAuditEvidence } from './auditEvidenceValidation';
 import { recommend, type RecommendationRequest, type RecommendationResult } from './recommendationEngine';
 import { cloneRecommendationResult, isValidRecommendationResult, recommendationResultsEqual } from './recommendationResult';
 import type { ContentCard, DiversityLevel, InterestRecord, MemoryMode, SupplyProfile, TopicCounts } from './types';
@@ -72,21 +73,6 @@ const hasExactOwnKeys = (value: unknown, requiredKeys: readonly string[]): boole
   }
 };
 
-const hasOwnedReferences = (value: unknown): boolean => {
-  const seen = new WeakSet<object>();
-  const visit = (current: unknown): boolean => {
-    if (!current || typeof current !== 'object') return true;
-    if (seen.has(current)) return false;
-    seen.add(current);
-    try {
-      return Reflect.ownKeys(current).every((key) => visit((current as Record<PropertyKey, unknown>)[key]));
-    } catch {
-      return false;
-    }
-  };
-  return visit(value);
-};
-
 const isExactAuditPairShape = (value: unknown): value is AuditPair => {
   if (!hasExactOwnKeys(value, AUDIT_PAIR_KEYS)) return false;
   const pair = value as AuditPair;
@@ -95,7 +81,7 @@ const isExactAuditPairShape = (value: unknown): value is AuditPair => {
 };
 
 const isOwnedAuditPair = (value: unknown): value is AuditPair => (
-  isExactAuditPairShape(value) && hasOwnedReferences(value)
+  isExactAuditPairShape(value) && hasOwnedAuditEvidence(value)
 );
 
 export const cloneAuditPair = (pair: AuditPair): AuditPair => ({
@@ -191,7 +177,12 @@ export const validateAuditPair = (candidate: AuditPair): readonly AuditIssue[] =
       || typeof right?.request?.round !== 'number') {
       issues.push({ code: 'round-mismatch' });
     }
-    if (left?.request?.supplyProfileId === right?.request?.supplyProfileId) issues.push({ code: 'same-supply' });
+    const leftSupply = left?.request?.supplyProfileId;
+    const rightSupply = right?.request?.supplyProfileId;
+    const isKnownSupply = (value: unknown): value is SupplyProfile['id'] => (
+      typeof value === 'string' && SUPPLY_PROFILES.some((supply) => supply.id === value)
+    );
+    if (isKnownSupply(leftSupply) && leftSupply === rightSupply) issues.push({ code: 'same-supply' });
     const validResults = isOwnedAuditPair(candidate)
       && isValidRecommendationResult(left) && isValidRecommendationResult(right)
       && left.cards.length === 8 && right.cards.length === 8;
@@ -224,6 +215,8 @@ const stableObjectEqual = (left: unknown, right: unknown): boolean => {
 export const auditPairsEqual = (left: AuditPair, right: AuditPair): boolean => {
   try {
     if (!isOwnedAuditPair(left) || !isOwnedAuditPair(right)) return false;
+    if (!isValidRecommendationResult(left.balanced) || !isValidRecommendationResult(left.natureRich)
+      || !isValidRecommendationResult(right.balanced) || !isValidRecommendationResult(right.natureRich)) return false;
     return stableObjectEqual(left.invariantInterest, right.invariantInterest)
       && left.invariantDiversityLevel === right.invariantDiversityLevel
       && left.invariantMemoryMode === right.invariantMemoryMode

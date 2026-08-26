@@ -4,6 +4,8 @@ import { SUPPLY_PROFILES } from '../data/supplyProfiles';
 import { TOPIC_ORDER } from '../data/topics';
 import type { RecommendationRequest } from './recommendationEngine';
 import { auditPairsEqual, buildAuditPair, validateAuditPair } from './auditComparison';
+import { cloneRecommendationResult } from './recommendationResult';
+import type { ContentCard, SupplyProfile } from './types';
 
 const requestFor = (topicId: (typeof TOPIC_ORDER)[number]): RecommendationRequest => ({
   interest: Object.fromEntries(TOPIC_ORDER.map((id) => [id, id === topicId ? 3 : 0])) as RecommendationRequest['interest'],
@@ -107,5 +109,55 @@ describe('controlled supply audit comparison', () => {
     expect(auditPairsEqual(extra, pair)).toBe(false);
     expect(auditPairsEqual(nonEnumerable, pair)).toBe(false);
     expect(auditPairsEqual(wrongField, pair)).toBe(false);
+  });
+
+  it('keeps global data and input graphs unchanged while owning every built result', () => {
+    const cardsBefore = structuredClone(CARDS);
+    const suppliesBefore = structuredClone(SUPPLY_PROFILES);
+    const pair = buildAuditPair(requestFor('science'), CARDS, SUPPLY_PROFILES);
+    expect(CARDS).toEqual(cardsBefore);
+    expect(SUPPLY_PROFILES).toEqual(suppliesBefore);
+    expect(pair.balanced.cards).not.toBe(CARDS);
+    expect(pair.balanced.cards[0]).not.toBe(CARDS.find((card) => card.id === pair.balanced.cards[0].id));
+    expect(pair.natureRich.cards[0]).not.toBe(CARDS.find((card) => card.id === pair.natureRich.cards[0].id));
+    expect(Object.isFrozen(pair)).toBe(true);
+    expect(Object.isFrozen(pair.balanced.request)).toBe(true);
+  });
+
+  it('isolates source input mutations and output mutations from another pair', () => {
+    const sourceCards = structuredClone(CARDS) as ContentCard[];
+    const sourceSupplies = structuredClone(SUPPLY_PROFILES) as SupplyProfile[];
+    const first = buildAuditPair(requestFor('science'), sourceCards, sourceSupplies);
+    sourceCards[0].title = '입력 변조';
+    sourceSupplies[0].baseTokens.science = 99;
+    sourceSupplies.push(sourceSupplies[0]);
+    const pristine = buildAuditPair(requestFor('science'), CARDS, SUPPLY_PROFILES);
+    expect(first.balanced.cards[0].title).not.toBe('입력 변조');
+    expect(first.balanced.tokenBreakdown.science.baseTokens).toBe(1);
+    expect(first).not.toBe(pristine);
+    expect(auditPairsEqual(first, pristine)).toBe(true);
+    const outputCards = first.balanced.cards as ContentCard[];
+    expect(() => { outputCards[0].title = '출력 변조'; }).toThrow();
+    expect(pristine.balanced.cards[0].title).not.toBe('출력 변조');
+  });
+
+  it('returns each declared issue once in order and excludes unknown same-supply values', () => {
+    const pair = buildAuditPair(requestFor('science'), CARDS, SUPPLY_PROFILES);
+    const allIssues = {
+      ...pair,
+      invariantInterest: { ...pair.invariantInterest, science: 99 },
+      invariantDiversityLevel: 2 as const,
+      invariantMemoryMode: 'clear' as const,
+      balanced: { ...pair.balanced, request: { ...pair.balanced.request, round: 9 } },
+      natureRich: { ...pair.natureRich, request: { ...pair.natureRich.request, round: 1, supplyProfileId: 'balanced' as const } },
+    };
+    const issues = validateAuditPair(allIssues).map((issue) => issue.code);
+    expect(issues).toEqual([
+      'interest-mismatch', 'diversity-mismatch', 'memory-mismatch', 'round-mismatch', 'same-supply', 'invalid-feed-size',
+    ]);
+    for (const code of issues) expect(issues.filter((item) => item === code)).toHaveLength(1);
+    expect(validateAuditPair({} as never).map((issue) => issue.code)).not.toContain('same-supply');
+    const noChange = { ...pair, natureRich: cloneRecommendationResult(pair.balanced) };
+    expect(validateAuditPair(noChange).map((issue) => issue.code)).toEqual(['same-supply', 'no-result-change']);
   });
 });

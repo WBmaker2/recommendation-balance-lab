@@ -37,6 +37,19 @@ const probeAbsentDescriptor = (entry: BrowserDescriptor, installSpy: () => unkno
   expect(Object.getOwnPropertyDescriptor(entry.target, entry.key)).toEqual(entry.descriptor);
 };
 
+const captureBrowserSpies = () => {
+  const descriptors = browserDescriptors();
+  for (const { target, key, descriptor } of descriptors) {
+    if (!descriptor) Object.defineProperty(target, key, { configurable: true, writable: true, value: vi.fn() });
+  }
+  return {
+    descriptors,
+    setItem: vi.spyOn(Storage.prototype, 'setItem'),
+    fetch: vi.spyOn(globalThis, 'fetch'),
+    sendBeacon: vi.spyOn(navigator, 'sendBeacon'),
+  };
+};
+
 afterEach(() => {
   vi.restoreAllMocks();
   restoreDescriptors(initialBrowserDescriptors);
@@ -81,38 +94,38 @@ async function reachBalanceWithSnapshots(user: ReturnType<typeof userEvent.setup
 describe('controller fresh mount', () => {
   it('remounts an empty owned graph after an in-memory balance session', async () => {
     const user = userEvent.setup();
-    const before = browserDescriptors();
+    const browser = captureBrowserSpies();
     const firstState: { current?: ExperimentState } = {};
-    const setItem = vi.spyOn(Storage.prototype, 'setItem');
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    if (!('sendBeacon' in navigator)) Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: vi.fn() });
-    const sendBeacon = vi.spyOn(navigator, 'sendBeacon');
-    const mounted = render(<ControllerHarness onState={(state) => { firstState.current = state; }} />);
-    await reachBalanceWithSnapshots(user);
-    expect(screen.getByText('서로 다른 설정 3/3개 저장됨')).toBeInTheDocument();
-    expect(firstState.current?.stage).toBe('balance');
-    expect(firstState.current?.balanceSnapshots).toHaveLength(3);
-    mounted.unmount();
+    try {
+      const mounted = render(<ControllerHarness onState={(state) => { firstState.current = state; }} />);
+      await reachBalanceWithSnapshots(user);
+      expect(screen.getByText('서로 다른 설정 3/3개 저장됨')).toBeInTheDocument();
+      expect(firstState.current?.stage).toBe('balance');
+      expect(firstState.current?.balanceSnapshots).toHaveLength(3);
+      mounted.unmount();
 
-    const secondState: { current?: ExperimentState } = {};
-    render(<ControllerHarness onState={(state) => { secondState.current = state; }} />);
-    expect(screen.getByRole('button', { name: '실험 시작' })).toBeInTheDocument();
-    expect(JSON.parse(screen.getByTestId('controller-state').textContent ?? '{}')).toEqual({
-      stage: 'intro',
-      interest: { science: 0, art: 0, sports: 0, nature: 0, history: 0 },
-      snapshots: [],
-      auditPair: null,
-      reportAssessment: null,
-    });
-    expect(setItem).not.toHaveBeenCalled();
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(sendBeacon).not.toHaveBeenCalled();
-    expect(firstState.current?.interest).not.toBe(secondState.current?.interest);
-    expect(firstState.current?.balanceSnapshots).not.toBe(secondState.current?.balanceSnapshots);
-    expect(firstState.current?.reportDraft).not.toBe(secondState.current?.reportDraft);
-    expect(firstState.current?.initialResult).not.toBe(secondState.current?.initialResult);
-    restoreDescriptors(before);
-    expect(browserDescriptors()).toEqual(before);
+      const secondState: { current?: ExperimentState } = {};
+      render(<ControllerHarness onState={(state) => { secondState.current = state; }} />);
+      expect(screen.getByRole('button', { name: '실험 시작' })).toBeInTheDocument();
+      expect(JSON.parse(screen.getByTestId('controller-state').textContent ?? '{}')).toEqual({
+        stage: 'intro',
+        interest: { science: 0, art: 0, sports: 0, nature: 0, history: 0 },
+        snapshots: [],
+        auditPair: null,
+        reportAssessment: null,
+      });
+      expect(browser.setItem).not.toHaveBeenCalled();
+      expect(browser.fetch).not.toHaveBeenCalled();
+      expect(browser.sendBeacon).not.toHaveBeenCalled();
+      expect(firstState.current?.interest).not.toBe(secondState.current?.interest);
+      expect(firstState.current?.balanceSnapshots).not.toBe(secondState.current?.balanceSnapshots);
+      expect(firstState.current?.reportDraft).not.toBe(secondState.current?.reportDraft);
+      expect(firstState.current?.initialResult).not.toBe(secondState.current?.initialResult);
+    } finally {
+      vi.restoreAllMocks();
+      restoreDescriptors(browser.descriptors);
+    }
+    expect(browserDescriptors()).toEqual(browser.descriptors);
   });
 
   it('exports the exact controller contract', () => {

@@ -13,7 +13,7 @@ Fix Round 1 보정: accepted card replacement 뒤 CSS 240ms + 20ms 여유(총 26
 | 375×812 모바일 | post-fix E2E 미검증 | 최종 보완 후 브라우저 미실행; 이전 보완 전 결과와 구분 |
 | 키보드 단독 조작 | post-fix E2E 미검증 | 최종 보완 후 브라우저 미실행; 키보드 경로 코드는 보존 |
 | 모션 감소 | post-fix E2E 미검증 | 최종 보완 후 브라우저 미실행; reduced-motion 검사는 보존 |
-| Axe WCAG 2.2 A/AA | post-fix E2E 미검증 | 최종 보완 후 브라우저 미실행; audit 포함 검사는 보존 |
+| Axe WCAG 2.2 A/AA | post-fix E2E 미검증 | 최종 보완 후 브라우저 미실행; intro/comparison/exploration/balance/audit/report 검사 코드는 보존 |
 | VoiceOver(macOS) | 범위 제외(사용자 요청) | 실제 사람의 macOS VoiceOver 검수는 수행하지 않음 |
 | 저장·네트워크 경계 | 자동 검색 통과 | production runtime privacy search 결과 0건 |
 | 40장 카드·8장 피드 | post-fix E2E 미검증 | 최종 보완 후 브라우저 미실행; learning-flow 검사 코드는 보존 |

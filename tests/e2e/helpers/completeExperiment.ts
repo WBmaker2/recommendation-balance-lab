@@ -74,14 +74,23 @@ export async function reachChoice(page: Page, options: FlowOptions = {}): Promis
   }
 }
 
-export async function continueToComparison(page: Page, options: FlowOptions = {}): Promise<void> {
+export async function enterComparison(page: Page, options: FlowOptions = {}): Promise<void> {
   const keyboard = options.useKeyboard ?? false;
   await choose(page.getByRole('radio', { name: '늘어난다' }).nth(0), keyboard);
   await choose(page.getByRole('radio', { name: '줄어든다' }).nth(1), keyboard);
   await activate(page.getByRole('button', { name: '다음 목록 예측' }), keyboard);
+}
+
+export async function continueToExploration(page: Page, options: FlowOptions = {}): Promise<void> {
+  const keyboard = options.useKeyboard ?? false;
   await choose(page.getByRole('radio', { name: '늘었다' }).nth(0), keyboard);
   await choose(page.getByRole('radio', { name: '줄었다' }).nth(1), keyboard);
   await activate(page.getByRole('button', { name: '분포 문장 확인' }), keyboard);
+}
+
+export async function continueToComparison(page: Page, options: FlowOptions = {}): Promise<void> {
+  await enterComparison(page, options);
+  await continueToExploration(page, options);
 }
 
 export async function reachComparison(page: Page, options: FlowOptions = {}): Promise<void> {

@@ -1,6 +1,7 @@
 import { CARDS } from '../data/cards';
 import { TOPIC_ORDER } from '../data/topics';
 import { allocateTopicCounts, InsufficientSupplyError } from './apportionment';
+import { isExactRecommendationRequest } from './recommendationValidation';
 import type {
   CardId,
   ContentCard,
@@ -76,18 +77,7 @@ const normalizedRequest = (request: RecommendationRequest): RecommendationReques
 });
 
 const assertRequest = (request: RecommendationRequest): void => {
-  if (request.feedSize !== 8) {
-    throw new InsufficientSupplyError('추천 피드 크기는 정확히 8장이어야 합니다.');
-  }
-  if (!Number.isInteger(request.round) || request.round < 0) {
-    throw new InsufficientSupplyError('추천 라운드는 0 이상의 정수여야 합니다.');
-  }
-  for (const topicId of TOPIC_ORDER) {
-    const value = request.interest[topicId];
-    if (!Number.isFinite(value) || value < 0) {
-      throw new InsufficientSupplyError(`관심 토큰이 올바르지 않습니다: ${topicId}.`);
-    }
-  }
+  if (!isExactRecommendationRequest(request)) throw new InsufficientSupplyError('추천 요청 형식이 올바르지 않습니다.');
 };
 
 const assertSupplyMatch = (request: RecommendationRequest, supply: SupplyProfile): void => {

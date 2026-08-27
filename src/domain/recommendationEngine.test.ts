@@ -11,6 +11,8 @@ import {
   type RecommendationRequest,
 } from './recommendationEngine';
 import { allocateTopicCounts } from './apportionment';
+import { isExactInterestRecord, isExactRecommendationRequest } from './recommendationValidation';
+import { isValidRecommendationResult } from './recommendationResult';
 
 const balanced = SUPPLY_PROFILES.find((supply) => supply.id === 'balanced');
 const natureRich = SUPPLY_PROFILES.find((supply) => supply.id === 'nature-rich');
@@ -35,6 +37,25 @@ const request = (overrides: Partial<RecommendationRequest> = {}): Recommendation
 });
 
 describe('결정론적 토큰 추천 엔진', () => {
+  it('fails closed for non-exact recommendation request and interest shapes', () => {
+    expect(isExactInterestRecord({ science: 0, art: 0, sports: 0, nature: 0, history: 0 })).toBe(true);
+    expect(isExactInterestRecord({ science: 0, art: 0, sports: 0, nature: 0, history: 0, extra: 0 })).toBe(false);
+    expect(isExactInterestRecord({ science: 0.5, art: 0, sports: 0, nature: 0, history: 0 })).toBe(false);
+    const accessor = {};
+    Object.defineProperty(accessor, 'science', { enumerable: true, get: () => 0 });
+    expect(isExactInterestRecord(accessor)).toBe(false);
+    const throwing = new Proxy({}, { ownKeys: () => { throw new Error('trap'); } });
+    expect(isExactInterestRecord(throwing)).toBe(false);
+
+    expect(isExactRecommendationRequest(request())).toBe(true);
+    expect(isExactRecommendationRequest({ ...request(), diversityLevel: 3 })).toBe(false);
+    expect(isExactRecommendationRequest({ ...request(), interest: { ...interest(1), art: 0.5 } })).toBe(false);
+    expect(isExactRecommendationRequest({ ...request(), unknown: true })).toBe(false);
+    expect(isExactRecommendationRequest(Object.create(null))).toBe(false);
+    const requestProxy = new Proxy(request(), { get: () => { throw new Error('trap'); } });
+    expect(isExactRecommendationRequest(requestProxy)).toBe(false);
+  });
+
   it('정확한 투명 토큰 항목을 계산한다', () => {
     const breakdown = calculateTokenBreakdown(
       request({ interest: interest(3), diversityLevel: 2 }),
@@ -103,6 +124,13 @@ describe('결정론적 토큰 추천 엔진', () => {
         feedSize: 8,
       }),
     );
+  });
+
+  it('isValidRecommendationResult uses the exact request validator', () => {
+    const result = recommend(request({ interest: interest(3), round: 1 }), CARDS, balanced);
+    expect(isValidRecommendationResult(result)).toBe(true);
+    expect(isValidRecommendationResult({ ...result, request: { ...result.request, round: 1.5 } })).toBe(false);
+    expect(isValidRecommendationResult({ ...result, request: { ...result.request, extra: true } })).toBe(false);
   });
 
   it('각 카드에 완전한 설명을 만들고 고유 카드를 반환한다', () => {

@@ -126,6 +126,20 @@ describe('추천 실험 상태 머신', () => {
     expect(compared.changedResult).toEqual(scienceHeavyResult);
   });
 
+  it('예측 action의 변조 result는 comparison으로 전이하지 않는다', () => {
+    const answer: PredictionAnswer = { focusDirection: 'increase', varietyDirection: 'decrease' };
+    const tampered = {
+      ...scienceHeavyResult,
+      topicCounts: { science: 8, art: 0, sports: 0, nature: 0, history: 0 },
+    };
+    const rejected = experimentReducer(stateAfterThreeSameTopicSelections, {
+      type: 'SUBMIT_PREDICTION', answer, result: tampered,
+    });
+    expect(rejected.stage).toBe('choice');
+    expect(rejected.changedResult).toBeNull();
+    expect(rejected.lastError).toBeTruthy();
+  });
+
   it('분포 사실 확인 오답은 증거를 보존하고 정답은 탐색으로 연다', () => {
     const answer: PredictionAnswer = { focusDirection: 'increase', varietyDirection: 'decrease' };
     const compared = experimentReducer(stateAfterThreeSameTopicSelections, {

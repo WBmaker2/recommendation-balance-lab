@@ -5,7 +5,7 @@ import { TOPIC_ORDER } from '../data/topics';
 import { recommend, type RecommendationResult } from './recommendationEngine';
 import { countTopicCards } from './distribution';
 import { applyExploration, InvalidExplorationError } from './exploration';
-import { cloneRecommendationResult, recommendationResultsEqual } from './recommendationResult';
+import { cloneRecommendationResult, isValidRecommendationResult, recommendationResultsEqual } from './recommendationResult';
 import { reduceAuditAnswer, reduceAuditRecord } from './experimentStateAudit';
 import { reduceReportCompletion, reduceReportUpdate } from './experimentStateReport';
 import { emptyReportDraft, type ReportAssessment, type ReportDraft } from './reportAssessment';
@@ -260,11 +260,27 @@ const reducePrediction = (
 ): ExperimentState => {
   if (!canRunPrediction(state)) return withError(state, '카드를 세 장 선택한 뒤 예측해 주세요.');
   if (!validAnswer(answer)) return withError(state, '예측 답을 선택해 주세요.');
+  let expectedResult: RecommendationResult;
+  try {
+    expectedResult = recommend({
+      interest: copyInterest(state.interest),
+      diversityLevel: 0,
+      memoryMode: 'keep',
+      supplyProfileId: 'balanced',
+      round: 1,
+      feedSize: 8,
+    }, CARDS, balancedSupply);
+    if (!isValidRecommendationResult(result) || !recommendationResultsEqual(result, expectedResult)) {
+      return withError(state, '예측 결과가 가상 규칙과 일치하지 않습니다.');
+    }
+  } catch {
+    return withError(state, '예측 결과가 가상 규칙과 일치하지 않습니다.');
+  }
   return {
     ...state,
     stage: 'comparison',
     prediction: cloneDirectionAnswer(answer),
-    changedResult: cloneResult(result),
+    changedResult: cloneResult(expectedResult),
     lastError: null,
   };
 };

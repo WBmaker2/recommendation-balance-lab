@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { SUPPLY_PROFILES } from '../../data/supplyProfiles';
 import { TOPICS } from '../../data/topics';
 import type { RecommendationExplanation } from '../../domain/recommendationEngine';
@@ -8,14 +9,31 @@ interface WhyThisCardDialogProps {
 }
 
 export function WhyThisCardDialog({ explanation, onClose }: WhyThisCardDialogProps): React.JSX.Element {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
   const topic = TOPICS.find((item) => item.id === explanation.topicId);
   const supply = SUPPLY_PROFILES.find((item) => item.id === explanation.supplyProfileId);
+  useEffect(() => {
+    triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    if (!dialog) return undefined;
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      onClose();
+      triggerRef.current?.focus();
+    };
+    dialog.addEventListener('keydown', handleKeyDown);
+    return () => dialog.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="recommendation-reason-title"
       data-dialog="card-reason"
+      tabIndex={-1}
     >
       <h2 id="recommendation-reason-title">추천 이유</h2>
       <p>{topic?.label ?? explanation.topicId} 주제의 이 카드가 나온 근거입니다.</p>

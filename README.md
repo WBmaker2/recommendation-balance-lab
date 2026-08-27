@@ -54,4 +54,8 @@ npm run quality
 
 `npm run quality`는 lint → typecheck → scanner tests → line/boundary checks → Vitest → production build 순서로 실행합니다. 브라우저 E2E는 별도 명령이며, 현재 QA 문서에는 최종 보완 후 `post-fix E2E 미검증` 상태가 정직하게 기록되어 있습니다.
 
-이 저장소의 범위는 로컬 구현과 검증 문서입니다. 배포, 원격 저장소 설정, HVC 등록·갤러리 동기화는 포함하지 않습니다.
+## 배포
+
+소스 저장소는 [GitHub의 WBmaker2/recommendation-balance-lab](https://github.com/WBmaker2/recommendation-balance-lab)이며, GitHub Pages 사이트는 [추천 알고리즘 균형 실험실](https://wbmaker2.github.io/recommendation-balance-lab/)입니다. 로컬에서 `npm run quality`로 품질 게이트를 확인한 뒤 `main` 브랜치에 반영하면, `.github/workflows/deploy-pages.yml`이 Node `v24.15.0`으로 `npm ci`와 `npm run build`를 실행하고 `dist`를 Pages artifact로 배포합니다. Vite는 프로젝트 사이트에서도 동작하도록 상대 자산 경로를 사용합니다.
+
+HVC 등록과 갤러리 동기화는 이 저장소의 범위에 포함하지 않습니다.

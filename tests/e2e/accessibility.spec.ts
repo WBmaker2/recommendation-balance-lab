@@ -30,7 +30,9 @@ test('keyboard-only flow reaches completion and both dialogs close with Escape',
   await page.getByRole('dialog', { name: '업데이트 내역' }).press('Escape');
   await expect(page.getByRole('dialog', { name: '업데이트 내역' })).toBeHidden();
 
-  await page.getByRole('button', { name: '실험 시작' }).click();
+  const startButton = page.getByRole('button', { name: '실험 시작' });
+  await startButton.focus();
+  await startButton.press('Enter');
   const reasonTrigger = page.getByRole('article', { name: /추천 카드/ }).first().getByRole('button', { name: '왜 이 카드가 나왔나요?' });
   await reasonTrigger.press('Enter');
   const reasonDialog = page.getByRole('dialog', { name: '추천 이유' });

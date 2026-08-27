@@ -38,3 +38,10 @@ test('preserves strings so a URL cannot hide a later forbidden API', () => {
     { path: 'src/runtime.ts', api: 'fetch' },
   ]);
 });
+
+test('ignores comments inside template literal expressions', () => {
+  assert.deepEqual(findBoundaryViolations([{
+    path: 'src/runtime.ts',
+    text: 'const label = `${/* fetch */ "안전"}`;',
+  }]), []);
+});

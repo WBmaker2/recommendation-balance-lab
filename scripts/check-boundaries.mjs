@@ -29,49 +29,93 @@ const forbiddenPatterns = [
 /** @param {string} text */
 function withoutComments(text) {
   let output = '';
-  let state = 'normal';
-  let quote = '';
-  let escaped = false;
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    const next = text[index + 1];
-    if (state === 'line') {
-      if (character === '\n' || character === '\r') {
-        output += character;
-        state = 'normal';
-      } else output += ' ';
-      continue;
-    }
-    if (state === 'block') {
-      if (character === '*' && next === '/') {
-        output += '  ';
-        index += 1;
-        state = 'normal';
-      } else output += character === '\n' || character === '\r' ? character : ' ';
-      continue;
-    }
-    if (state === 'string') {
+  let index = 0;
+
+  const copyQuoted = (quote) => {
+    output += quote;
+    index += 1;
+    let escaped = false;
+    while (index < text.length) {
+      const character = text[index];
       output += character;
+      index += 1;
       if (escaped) escaped = false;
       else if (character === '\\') escaped = true;
-      else if (character === quote) state = 'normal';
-      continue;
+      else if (character === quote) return;
     }
-    if (character === '/' && next === '/') {
-      output += '  ';
-      index += 1;
-      state = 'line';
-    } else if (character === '/' && next === '*') {
-      output += '  ';
-      index += 1;
-      state = 'block';
-    } else if (character === "'" || character === '"' || character === '`') {
-      output += character;
-      quote = character;
-      escaped = false;
-      state = 'string';
-    } else output += character;
-  }
+  };
+
+  const copyTemplate = () => {
+    output += '`';
+    index += 1;
+    while (index < text.length) {
+      const character = text[index];
+      if (character === '\\') {
+        output += character;
+        index += 1;
+        if (index < text.length) {
+          output += text[index];
+          index += 1;
+        }
+      } else if (character === '`') {
+        output += character;
+        index += 1;
+        return;
+      } else if (character === '$' && text[index + 1] === '{') {
+        output += '${';
+        index += 2;
+        scanCode(true);
+      } else {
+        output += character;
+        index += 1;
+      }
+    }
+  };
+
+  const scanCode = (untilBrace = false) => {
+    while (index < text.length) {
+      const character = text[index];
+      const next = text[index + 1];
+      if (untilBrace && character === '}') {
+        output += character;
+        index += 1;
+        return;
+      }
+      if (character === '/' && next === '/') {
+        output += '  ';
+        index += 2;
+        while (index < text.length && text[index] !== '\n' && text[index] !== '\r') {
+          output += ' ';
+          index += 1;
+        }
+      } else if (character === '/' && next === '*') {
+        output += '  ';
+        index += 2;
+        while (index < text.length) {
+          if (text[index] === '*' && text[index + 1] === '/') {
+            output += '  ';
+            index += 2;
+            break;
+          }
+          output += text[index] === '\n' || text[index] === '\r' ? text[index] : ' ';
+          index += 1;
+        }
+      } else if (character === "'" || character === '"') {
+        copyQuoted(character);
+      } else if (character === '`') {
+        copyTemplate();
+      } else if (character === '{') {
+        output += character;
+        index += 1;
+        scanCode(true);
+      } else {
+        output += character;
+        index += 1;
+      }
+    }
+  };
+
+  scanCode();
   return output;
 }
 

@@ -1,7 +1,7 @@
 import { CARDS } from '../data/cards';
 import { TOPIC_ORDER } from '../data/topics';
 import { allocateTopicCounts, InsufficientSupplyError } from './apportionment';
-import { isExactRecommendationRequest } from './recommendationValidation';
+import { parseRecommendationRequest } from './recommendationValidation';
 import type {
   CardId,
   ContentCard,
@@ -67,17 +67,10 @@ export class SupplyProfileMismatchError extends Error {
 
 const limitation = '가상의 단순 규칙이며 실제 서비스 추천을 판정하지 않습니다' as const;
 
-const normalizedRequest = (request: RecommendationRequest): RecommendationRequest => ({
-  interest: Object.fromEntries(TOPIC_ORDER.map((topicId) => [topicId, request.interest[topicId]])) as InterestRecord,
-  diversityLevel: request.diversityLevel,
-  memoryMode: request.memoryMode,
-  supplyProfileId: request.supplyProfileId,
-  round: request.round,
-  feedSize: 8,
-});
-
-const assertRequest = (request: RecommendationRequest): void => {
-  if (!isExactRecommendationRequest(request)) throw new InsufficientSupplyError('추천 요청 형식이 올바르지 않습니다.');
+const assertRequest = (request: RecommendationRequest): RecommendationRequest => {
+  const canonical = parseRecommendationRequest(request);
+  if (!canonical) throw new InsufficientSupplyError('추천 요청 형식이 올바르지 않습니다.');
+  return canonical;
 };
 
 const assertSupplyMatch = (request: RecommendationRequest, supply: SupplyProfile): void => {
@@ -90,13 +83,13 @@ export const calculateTokenBreakdown = (
   request: RecommendationRequest,
   supply: SupplyProfile,
 ): TopicTokenBreakdown => {
-  assertRequest(request);
-  assertSupplyMatch(request, supply);
+  const canonical = assertRequest(request);
+  assertSupplyMatch(canonical, supply);
   return Object.fromEntries(
     TOPIC_ORDER.map((topicId) => {
-      const interestTokens = request.memoryMode === 'clear' ? 0 : request.interest[topicId];
+      const interestTokens = canonical.memoryMode === 'clear' ? 0 : canonical.interest[topicId];
       const weightedInterestTokens = interestTokens * 2;
-      const diversityTokens = request.diversityLevel;
+      const diversityTokens = canonical.diversityLevel;
       return [
         topicId,
         {
@@ -162,9 +155,8 @@ export const recommend = (
   cards: readonly ContentCard[] = CARDS,
   supply: SupplyProfile,
 ): RecommendationResult => {
-  assertRequest(request);
-  assertSupplyMatch(request, supply);
-  const normalized = normalizedRequest(request);
+  const normalized = assertRequest(request);
+  assertSupplyMatch(normalized, supply);
   const tokenBreakdown = calculateTokenBreakdown(normalized, supply);
   const candidates = candidateCardsByTopic(cards, supply);
   const caps = Object.fromEntries(

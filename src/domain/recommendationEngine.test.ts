@@ -133,6 +133,22 @@ describe('결정론적 토큰 추천 엔진', () => {
     expect(isValidRecommendationResult({ ...result, request: { ...result.request, extra: true } })).toBe(false);
   });
 
+  it('uses one canonical request snapshot when a proxy changes on reread', () => {
+    const stable = request({ interest: interest(3), round: 1 });
+    let interestReads = 0;
+    const stateful = new Proxy(stable, {
+      get(target, key, receiver) {
+        if (key === 'interest') {
+          interestReads += 1;
+          return interestReads === 1 ? target.interest : interest(0);
+        }
+        return Reflect.get(target, key, receiver);
+      },
+    });
+
+    expect(recommend(stateful, CARDS, balanced)).toEqual(recommend(stable, CARDS, balanced));
+  });
+
   it('각 카드에 완전한 설명을 만들고 고유 카드를 반환한다', () => {
     const result = recommend(request({ interest: interest(3), round: 1 }), CARDS, balanced);
     expect(result.cards).toHaveLength(8);

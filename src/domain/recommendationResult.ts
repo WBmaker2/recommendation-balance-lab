@@ -3,7 +3,7 @@ import { SUPPLY_PROFILES } from '../data/supplyProfiles';
 import { TOPIC_ORDER } from '../data/topics';
 import type { ContentCard } from './types';
 import { recommend, type RecommendationResult } from './recommendationEngine';
-import { isExactRecommendationRequest } from './recommendationValidation';
+import { parseRecommendationRequest } from './recommendationValidation';
 
 const cloneCard = (card: ContentCard): ContentCard => ({ ...card });
 
@@ -73,8 +73,8 @@ export const isValidRecommendationResult = (value: unknown): value is Recommenda
   try {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const result = value as Partial<RecommendationResult>;
-    const request = result.request;
-    if (!isExactRecommendationRequest(request) || !isCanonicalCardList(result.cards)) return false;
+    const request = parseRecommendationRequest(result.request);
+    if (!request || !isCanonicalCardList(result.cards)) return false;
     const supply = SUPPLY_PROFILES.find((item) => item.id === request.supplyProfileId);
     if (!supply) return false;
     const expected = recommend(request, CARDS, supply);

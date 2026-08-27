@@ -4,8 +4,10 @@ import { completeExperiment, continueToAudit, continueToBalance, continueToExplo
 
 async function expectA11y(page: Page): Promise<void> {
   const result = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'])
-    .withRules({ 'target-size': { enabled: true } })
+    .options({
+      runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'] },
+      rules: { 'target-size': { enabled: true } },
+    })
     .analyze();
   expect(result.violations).toEqual([]);
 }

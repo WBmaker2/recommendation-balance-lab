@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { continueToAudit, continueToBalance, continueToReport, finishReport, reachComparison, watchPageErrors } from './helpers/completeExperiment';
+import { continueToAudit, continueToBalance, continueToComparison, continueToReport, finishReport, reachChoice, watchPageErrors } from './helpers/completeExperiment';
 
 test.use({ viewport: { width: 375, height: 812 } });
 
@@ -12,7 +12,9 @@ test('keeps every learner stage usable at 375 by 812 without horizontal overflow
   const errors = watchPageErrors(page);
   await page.goto('/');
   await expectNoHorizontalOverflow(page);
-  await reachComparison(page);
+  await reachChoice(page);
+  await expectNoHorizontalOverflow(page);
+  await continueToComparison(page);
   await expectNoHorizontalOverflow(page);
   await continueToBalance(page);
   await expectNoHorizontalOverflow(page);

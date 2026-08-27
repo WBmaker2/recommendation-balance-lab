@@ -64,7 +64,7 @@ async function setDiversity(page: Page, value: number, keyboard: boolean): Promi
   for (let index = 0; index < value; index += 1) await slider.press('ArrowRight');
 }
 
-export async function reachComparison(page: Page, options: FlowOptions = {}): Promise<void> {
+export async function reachChoice(page: Page, options: FlowOptions = {}): Promise<void> {
   const keyboard = options.useKeyboard ?? false;
   await activate(page.getByRole('button', { name: '실험 시작' }), keyboard);
   for (let index = 0; index < 3; index += 1) {
@@ -72,12 +72,21 @@ export async function reachComparison(page: Page, options: FlowOptions = {}): Pr
     await chooseCard(page, keyboard);
     if (!keyboard && index < 2) await page.waitForTimeout(260);
   }
+}
+
+export async function continueToComparison(page: Page, options: FlowOptions = {}): Promise<void> {
+  const keyboard = options.useKeyboard ?? false;
   await choose(page.getByRole('radio', { name: '늘어난다' }).nth(0), keyboard);
   await choose(page.getByRole('radio', { name: '줄어든다' }).nth(1), keyboard);
   await activate(page.getByRole('button', { name: '다음 목록 예측' }), keyboard);
   await choose(page.getByRole('radio', { name: '늘었다' }).nth(0), keyboard);
   await choose(page.getByRole('radio', { name: '줄었다' }).nth(1), keyboard);
   await activate(page.getByRole('button', { name: '분포 문장 확인' }), keyboard);
+}
+
+export async function reachComparison(page: Page, options: FlowOptions = {}): Promise<void> {
+  await reachChoice(page, options);
+  await continueToComparison(page, options);
 }
 
 export async function continueToBalance(page: Page, options: FlowOptions = {}): Promise<void> {

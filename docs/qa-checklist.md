@@ -2,7 +2,7 @@
 
 검수일: 2026-08-27 · 실행 환경: Node v24.15.0, Chromium Playwright 1.62.1
 
-Fix Round 1 보정: accepted card replacement 뒤 240ms 전환 안정화 대기를 사용하며 force/trial click은 사용하지 않았습니다.
+Fix Round 1 보정: accepted card replacement 뒤 CSS 240ms + 20ms 여유(총 260ms) 전환 안정화 대기를 사용하며 force/trial click은 사용하지 않았습니다.
 
 최종 보완 후 E2E는 실행 안전 제한으로 미검증 상태입니다. 아래 E2E 항목은 이전 보완 전 5/5 결과와 구분하여 보류합니다.
 

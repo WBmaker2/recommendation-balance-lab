@@ -22,14 +22,57 @@ const forbiddenPatterns = [
 /*
  * This is intentionally a small lexical boundary check: comments are blanked while
  * preserving line breaks, then each production source line is checked for the
- * forbidden API token. Test paths are excluded before scanning, and matchMedia has
- * no forbidden token, so ordinary reduced-motion feature detection remains valid.
+ * forbidden API token. Quoted strings and template literals are copied verbatim so
+ * URL text cannot turn the rest of a source line into a false comment. Test paths
+ * are excluded before scanning, and matchMedia has no forbidden token.
  */
 /** @param {string} text */
 function withoutComments(text) {
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\r\n]/g, ' '))
-    .replace(/\/\/[^\r\n]*/g, '');
+  let output = '';
+  let state = 'normal';
+  let quote = '';
+  let escaped = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    const next = text[index + 1];
+    if (state === 'line') {
+      if (character === '\n' || character === '\r') {
+        output += character;
+        state = 'normal';
+      } else output += ' ';
+      continue;
+    }
+    if (state === 'block') {
+      if (character === '*' && next === '/') {
+        output += '  ';
+        index += 1;
+        state = 'normal';
+      } else output += character === '\n' || character === '\r' ? character : ' ';
+      continue;
+    }
+    if (state === 'string') {
+      output += character;
+      if (escaped) escaped = false;
+      else if (character === '\\') escaped = true;
+      else if (character === quote) state = 'normal';
+      continue;
+    }
+    if (character === '/' && next === '/') {
+      output += '  ';
+      index += 1;
+      state = 'line';
+    } else if (character === '/' && next === '*') {
+      output += '  ';
+      index += 1;
+      state = 'block';
+    } else if (character === "'" || character === '"' || character === '`') {
+      output += character;
+      quote = character;
+      escaped = false;
+      state = 'string';
+    } else output += character;
+  }
+  return output;
 }
 
 /** @param {string} sourcePath */

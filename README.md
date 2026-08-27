@@ -55,4 +55,3 @@ npm run quality
 `npm run quality`는 lint → typecheck → scanner tests → line/boundary checks → Vitest → production build 순서로 실행합니다. 브라우저 E2E는 별도 명령이며, 현재 QA 문서에는 최종 보완 후 `post-fix E2E 미검증` 상태가 정직하게 기록되어 있습니다.
 
 이 저장소의 범위는 로컬 구현과 검증 문서입니다. 배포, 원격 저장소 설정, HVC 등록·갤러리 동기화는 포함하지 않습니다.
-

@@ -20,7 +20,6 @@ test('reports each forbidden production API with its source path', () => {
     ]);
   }
 });
-
 test('excludes tests and test fixtures and permits matchMedia', () => {
   const files = [
     { path: 'src/test/setup.ts', text: 'fetch("/test")' },
@@ -31,3 +30,11 @@ test('excludes tests and test fixtures and permits matchMedia', () => {
   assert.deepEqual(findBoundaryViolations(files), []);
 });
 
+test('preserves strings so a URL cannot hide a later forbidden API', () => {
+  assert.deepEqual(findBoundaryViolations([{
+    path: 'src/runtime.ts',
+    text: 'const endpoint = "https://example.test"; fetch(endpoint);',
+  }]), [
+    { path: 'src/runtime.ts', api: 'fetch' },
+  ]);
+});

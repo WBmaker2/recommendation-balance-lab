@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { continueToAudit, continueToBalance, continueToReport, finishReport, reachComparison } from './helpers/completeExperiment';
+import { continueToAudit, continueToBalance, continueToReport, finishReport, reachComparison, watchPageErrors } from './helpers/completeExperiment';
 
 test.use({ viewport: { width: 375, height: 812 } });
 
@@ -9,6 +9,7 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
 }
 
 test('keeps every learner stage usable at 375 by 812 without horizontal overflow', async ({ page }) => {
+  const errors = watchPageErrors(page);
   await page.goto('/');
   await expectNoHorizontalOverflow(page);
   await reachComparison(page);
@@ -16,9 +17,11 @@ test('keeps every learner stage usable at 375 by 812 without horizontal overflow
   await continueToBalance(page);
   await expectNoHorizontalOverflow(page);
   await continueToAudit(page);
+  await expectNoHorizontalOverflow(page);
   await continueToReport(page);
   await expectNoHorizontalOverflow(page);
   await finishReport(page);
   await expect(page.getByRole('heading', { name: '실험 완료' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
+  expect(errors).toEqual([]);
 });

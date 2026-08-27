@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { SUPPLY_PROFILES } from '../../data/supplyProfiles';
 import { TOPICS } from '../../data/topics';
 import type { RecommendationExplanation } from '../../domain/recommendationEngine';
@@ -11,21 +11,52 @@ interface WhyThisCardDialogProps {
 export function WhyThisCardDialog({ explanation, onClose }: WhyThisCardDialogProps): React.JSX.Element {
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
   const topic = TOPICS.find((item) => item.id === explanation.topicId);
   const supply = SUPPLY_PROFILES.find((item) => item.id === explanation.supplyProfileId);
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+  useLayoutEffect(() => {
     triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = dialogRef.current;
     if (!dialog) return undefined;
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      onClose();
+    dialog.focus();
+    const focusableControls = (): HTMLElement[] => Array.from(
+      dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+    ).filter((element) => !element.hasAttribute('disabled'));
+    const restoreTrigger = (): void => {
+      onCloseRef.current();
       triggerRef.current?.focus();
     };
-    dialog.addEventListener('keydown', handleKeyDown);
-    return () => dialog.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        restoreTrigger();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const controls = focusableControls();
+      const first = controls[0] ?? dialog;
+      const last = controls[controls.length - 1] ?? dialog;
+      const active = document.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        dialog.focus();
+      } else if (event.shiftKey && (active === dialog || !dialog.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        dialog.focus();
+      } else if (!event.shiftKey && (active === dialog || !dialog.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
   return (
     <div
       ref={dialogRef}
@@ -48,7 +79,7 @@ export function WhyThisCardDialog({ explanation, onClose }: WhyThisCardDialogPro
       </dl>
       <p>결정적 순서 규칙: {explanation.deterministicPositionRule}</p>
       <p>{explanation.limitation}</p>
-      <button type="button" onClick={onClose}>닫기</button>
+      <button type="button" onClick={() => { onCloseRef.current(); triggerRef.current?.focus(); }}>닫기</button>
     </div>
   );
 }

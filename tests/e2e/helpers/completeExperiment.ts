@@ -40,7 +40,10 @@ async function inspectReasons(page: Page, keyboard: boolean): Promise<void> {
     await activate(reasons.nth(index), keyboard);
     const dialog = page.getByRole('dialog', { name: '추천 이유' });
     await expect(dialog).toBeVisible();
-    await activate(dialog.getByRole('button', { name: '닫기' }), keyboard);
+    const close = dialog.getByRole('button', { name: '닫기' });
+    await expect(close).toBeVisible();
+    await expect(close).toBeEnabled();
+    await activate(close, keyboard);
     await expect(dialog).toBeHidden();
   }
 }
@@ -67,6 +70,7 @@ export async function reachComparison(page: Page, options: FlowOptions = {}): Pr
   for (let index = 0; index < 3; index += 1) {
     await inspectReasons(page, keyboard);
     await chooseCard(page, keyboard);
+    if (!keyboard && index < 2) await page.waitForTimeout(260);
   }
   await choose(page.getByRole('radio', { name: '늘어난다' }).nth(0), keyboard);
   await choose(page.getByRole('radio', { name: '줄어든다' }).nth(1), keyboard);

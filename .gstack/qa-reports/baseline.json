@@ -1,0 +1,82 @@
+{
+  "date": "2026-08-28",
+  "url": "https://wbmaker2.github.io/recommendation-balance-lab/",
+  "healthScore": 80,
+  "issues": [
+    {
+      "id": "ISSUE-001",
+      "title": "추천 이유가 개발자용 계산식으로 노출됨",
+      "severity": "high",
+      "category": "content"
+    },
+    {
+      "id": "ISSUE-002",
+      "title": "미션 1의 다음 행동이 긴 화면 아래에 묻힘",
+      "severity": "high",
+      "category": "ux"
+    },
+    {
+      "id": "ISSUE-003",
+      "title": "빈 보고서 제출 오류가 모바일 화면 밖에 나타남",
+      "severity": "high",
+      "category": "functional"
+    },
+    {
+      "id": "ISSUE-004",
+      "title": "완료 문장에 내부 ID와 잘못된 단위가 남음",
+      "severity": "high",
+      "category": "content"
+    },
+    {
+      "id": "ISSUE-005",
+      "title": "모바일 단계가 지나치게 길고 표 중심임",
+      "severity": "medium",
+      "category": "visual"
+    },
+    {
+      "id": "ISSUE-006",
+      "title": "진행 표시가 현재·완료 상태를 시각적으로 구분하지 못함",
+      "severity": "medium",
+      "category": "visual"
+    },
+    {
+      "id": "ISSUE-007",
+      "title": "핵심 현재 설정 저장 버튼의 강조 규칙이 일관되지 않음",
+      "severity": "medium",
+      "category": "visual"
+    },
+    {
+      "id": "ISSUE-008",
+      "title": "intro의 개인정보 안내가 반복됨",
+      "severity": "medium",
+      "category": "content"
+    },
+    {
+      "id": "ISSUE-009",
+      "title": "낯선 주제 탐색 뒤 완료 안내 없이 다음 미션으로 이동함",
+      "severity": "medium",
+      "category": "ux"
+    },
+    {
+      "id": "ISSUE-010",
+      "title": "배포 페이지에서 favicon 404가 발생함",
+      "severity": "low",
+      "category": "console"
+    },
+    {
+      "id": "ISSUE-011",
+      "title": "보고서의 관찰 지표 단위가 선택한 값과 맞지 않음",
+      "severity": "medium",
+      "category": "content"
+    }
+  ],
+  "categoryScores": {
+    "console": 70,
+    "links": 100,
+    "visual": 78,
+    "functional": 90,
+    "ux": 62,
+    "performance": 90,
+    "accessibility": 88
+  }
+}

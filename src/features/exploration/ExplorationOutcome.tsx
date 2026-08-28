@@ -1,5 +1,5 @@
 import { TOPIC_ORDER, TOPICS } from '../../data/topics';
-import { compareDistributions, countTopicCards } from '../../domain/distribution';
+import { buildDistributionSummary, compareDistributions, countTopicCards } from '../../domain/distribution';
 import type { RecommendationResult } from '../../domain/recommendationEngine';
 import type { TopicId } from '../../domain/types';
 import { TopicBadge } from '../../components/common/TopicBadge';
@@ -25,6 +25,11 @@ export function ExplorationOutcome({ before, after, focusTopicId }: ExplorationO
   return (
     <section aria-labelledby="exploration-outcome-title">
       <h3 id="exploration-outcome-title">탐색 결과</h3>
+      <div aria-label="미션 3 완료 안내">
+        <p><strong>미션 3 완료</strong> — 낯선 주제 카드를 열어 추천 목록의 변화를 살펴보았습니다.</p>
+        <p>관찰 결과: {buildDistributionSummary(delta, focusTopicId)}</p>
+        <p><strong>다음 미션: 균형 설정</strong> — 추천 목록을 바꾸는 설정을 살펴보세요.</p>
+      </div>
       <p>{exploredTopic.label} 관심 토큰이 1개 추가되었습니다</p>
       <DistributionTable delta={delta} />
       {compositionChanged ? (

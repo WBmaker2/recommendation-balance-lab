@@ -1,4 +1,5 @@
-import { LEARNING_GOALS, MODEL_WARNING, PURPOSE_LABELS } from '../data/learningCopy';
+import { LEARNING_GOALS, PURPOSE_SENTENCE_LABELS } from '../data/learningCopy';
+import { learnerMetricLabel, metricUnit, scenarioLabel } from '../data/learnerPresentation';
 import { TOPIC_ORDER, TOPICS } from '../data/topics';
 import { canCompareBalance, type BalanceSnapshot } from './balanceScenarios';
 import { countTopicCards, type DistributionDelta } from './distribution';
@@ -37,6 +38,7 @@ export interface ReportAssessment {
 export interface ModelReportProps {
   draft: ReportDraft;
   evidence: ReportEvidence;
+  errorMessage?: string | null;
   onChange(draft: ReportDraft): void;
   onSubmit(): void;
 }
@@ -263,10 +265,11 @@ export const buildReportSentence = (draft: ReportDraft, evidence: ReportEvidence
     const focusTopicId = focusTopicFromDelta(evidence.distributionDelta);
     const snapshot = evidence.snapshots.find((item) => item.id === draft.chosenSnapshotId);
     if (!focusTopicId || !snapshot || !draft.purpose || !draft.evidenceMetric || !Number.isInteger(draft.evidenceValue)) return '관찰한 증거를 모두 선택하면 모델 보고서가 완성됩니다.';
-    const metric = draft.evidenceMetric === 'focus-card-count' ? `${topicLabel(focusTopicId)} 포커스 카드 수` : '나타난 주제 수';
+    const metric = learnerMetricLabel(draft.evidenceMetric, topicLabel(focusTopicId));
+    const unit = metricUnit(draft.evidenceMetric);
     const memory = snapshot.config.memoryMode === 'keep' ? '관심 기록 유지' : '관심 기록 비우기';
     const factors = FACTORS.map(factorLabel).join('·');
-    return `${PURPOSE_LABELS[draft.purpose]} 목적에서 ${snapshot.id} 설정(다양성 토큰 ${snapshot.config.diversityLevel}, ${memory})의 ${metric}는 ${draft.evidenceValue}장(개)입니다. 영향을 살핀 조건은 ${factors}이며, ${MODEL_WARNING}.`;
+    return `${PURPOSE_SENTENCE_LABELS[draft.purpose]} 목적에서 ${scenarioLabel(snapshot.id)}(다양성 토큰 ${snapshot.config.diversityLevel}, ${memory})의 ${metric}는 ${draft.evidenceValue}${unit}입니다. 영향을 살핀 조건은 ${factors}입니다.`;
   } catch {
     return '관찰한 증거를 모두 선택하면 모델 보고서가 완성됩니다.';
   }

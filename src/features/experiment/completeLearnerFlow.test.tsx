@@ -12,6 +12,7 @@ async function reachBalance(user: ReturnType<typeof userEvent.setup>): Promise<v
   for (let count = 0; count < 3; count += 1) {
     await user.click(within(firstSlot).getByRole('button', { name: '이 카드 선택' }));
   }
+  expect(document.activeElement).toBe(screen.getByRole('heading', { name: '다음 목록 예측' }));
   await user.click(screen.getAllByRole('radio', { name: '늘어난다' })[0]);
   await user.click(screen.getAllByRole('radio', { name: '줄어든다' })[1]);
   await user.click(screen.getByRole('button', { name: '다음 목록 예측' }));
@@ -50,9 +51,9 @@ describe('complete learner flow', () => {
     await user.click(screen.getAllByRole('checkbox')[1]);
     await user.click(screen.getAllByRole('checkbox')[2]);
     await user.click(screen.getByRole('radio', { name: /새로운 주제를 찾기/ }));
-    await user.click(screen.getByRole('radio', { name: /scenario-a 설정의 실제 카드 수 사용/ }));
+    await user.click(screen.getByRole('radio', { name: /설정 1의 실제 카드 수 사용/ }));
     await user.click(screen.getByRole('radio', { name: /^포커스 주제 카드 수$/ }));
-    await user.click(screen.getByRole('radio', { name: /관찰한 포커스 주제 카드 수/ }));
+    await user.click(screen.getByRole('radio', { name: /포커스 카드 수: \d+장/ }));
     await user.click(screen.getByRole('radio', { name: '가상의 단순 규칙' }));
     await user.click(screen.getByRole('button', { name: '모델 보고서 제출' }));
 

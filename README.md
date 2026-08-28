@@ -37,6 +37,8 @@
 
 이번 요청 범위에는 실제 사람의 macOS VoiceOver 검수가 포함되지 않았습니다. QA 기록은 이를 `범위 제외(사용자 요청)`으로 표시하며, 자동 검사 결과를 사람 검수 통과로 바꾸지 않습니다.
 
+이번 개선의 상세 작업 순서와 합격 조건은 [2026-08-28 개선 계획](2026-08-28-recommendation-balance-lab-improvement-plan.md)에서 확인할 수 있습니다. 수정 후 QA 증거는 [QA 보고서](.gstack/qa-reports/qa-report-wbmaker2-github-io-recommendation-balance-lab-2026-08-28.md)에 기록했습니다.
+
 ## 로컬 명령
 
 Node `v24.15.0` 환경에서 다음 명령을 사용할 수 있습니다.
@@ -52,7 +54,7 @@ npm run build
 npm run quality
 ```
 
-`npm run quality`는 lint → typecheck → scanner tests → line/boundary checks → Vitest → production build 순서로 실행합니다. 브라우저 E2E는 별도 명령이며, 현재 QA 문서에는 최종 보완 후 `post-fix E2E 미검증` 상태가 정직하게 기록되어 있습니다.
+`npm run quality`는 lint → typecheck → scanner tests → line/boundary checks → Vitest → production build 순서로 실행합니다. 브라우저 E2E는 별도 명령이며, 최종 보완 후 `PLAYWRIGHT_PORT=4176 npm run test:e2e`로 Chromium 5개 시나리오를 통과했습니다.
 
 ## 배포
 

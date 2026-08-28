@@ -35,6 +35,15 @@ const completeToReport = async () => {
 };
 
 describe('App report learner flow', () => {
+  it('shows the first missing choice inside the report after an empty submit', async () => {
+    const user = await completeToReport();
+    await user.click(screen.getByRole('button', { name: '모델 보고서 제출' }));
+
+    expect(screen.getByText('포커스 주제 카드 수 변화를 골라 주세요.')).toBeVisible();
+    expect(document.activeElement).toBe(document.getElementById('report-focus-direction'));
+    expect(screen.queryByRole('heading', { name: '실험 완료' })).not.toBeInTheDocument();
+  });
+
   it('completes the report using observed controls and resets to a clean intro', async () => {
     const user = await completeToReport();
     expect(screen.getByRole('heading', { name: '모델 보고서' })).toBeInTheDocument();
@@ -44,16 +53,16 @@ describe('App report learner flow', () => {
       await user.click(screen.getByRole('checkbox', { name: factor }));
     }
     await user.click(screen.getByRole('radio', { name: '새로운 주제를 찾기' }));
-    await user.click(screen.getByRole('radio', { name: /scenario-a 설정의 실제 카드 수 사용/ }));
+    await user.click(screen.getByRole('radio', { name: /설정 1의 실제 카드 수 사용/ }));
     await user.click(screen.getByRole('radio', { name: '나타난 주제 수' }));
-    await user.click(screen.getByRole('radio', { name: /관찰한 나타난 주제 수/ }));
+    await user.click(screen.getByRole('radio', { name: /나타난 주제 수: \d+개/ }));
     await user.click(screen.getByRole('radio', { name: '가상의 단순 규칙' }));
     await user.click(screen.getByRole('button', { name: '모델 보고서 제출' }));
 
     expect(screen.getByRole('heading', { name: '실험 완료' })).toBeInTheDocument();
     expect(screen.getAllByText(MODEL_WARNING).length).toBeGreaterThanOrEqual(1);
     for (const goal of LEARNING_GOALS) expect(screen.getByText(goal)).toBeInTheDocument();
-    expect(screen.getByText(/새로운 주제를 찾기.*scenario-a.*선택 기록·균형 설정·콘텐츠 공급/)).toBeInTheDocument();
+    expect(screen.getByText(/새로운 주제를 찾는 목적에서.*설정 1.*선택 기록·균형 설정·콘텐츠 공급/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '새 실험 시작' }));
     expect(screen.getByRole('button', { name: '실험 시작' })).toBeInTheDocument();

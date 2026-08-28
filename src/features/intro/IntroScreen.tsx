@@ -40,7 +40,6 @@ export function IntroScreen({ onStart }: IntroScreenProps): React.JSX.Element {
 
       <section aria-labelledby="safety-title">
         <h3 id="safety-title">안전하고 정확하게 살펴보기</h3>
-        <p>실제 취향·검색 기록·계정 정보를 입력하지 않습니다.</p>
         <p>{PRIVACY_NOTICE}</p>
         <p>가상 실험의 결과를 실제 서비스 전체의 사실로 일반화하지 않습니다.</p>
         <p>{UNCOMFORTABLE_CONTENT_GUIDANCE}</p>

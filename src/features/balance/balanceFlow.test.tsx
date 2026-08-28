@@ -46,7 +46,8 @@ describe('미션 4: 균형 설정 비교 learner flow', () => {
     expect(screen.getByRole('button', { name: '균형 비교' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '균형 비교' })).toHaveAttribute('data-gi-pulse', 'true');
     expect(screen.getByText('관심 기록 비우기는 이전 미션 증거를 삭제하지 않고 이번 계산에서만 관심 토큰을 0으로 둡니다.')).toBeInTheDocument();
-    expect(screen.getAllByRole('article').filter((article) => article.textContent?.includes('scenario-')).length).toBe(3);
+    expect(screen.getAllByRole('heading', { name: /^설정 [123]$/ })).toHaveLength(3);
+    expect(screen.queryByText(/scenario-[abc]/)).not.toBeInTheDocument();
     expect(screen.getByText('하나의 가장 좋은 비율을 정답으로 두지 않습니다.')).toBeInTheDocument();
     expect(screen.queryByText(/추천 설정|권장|공정|정답 설정|최고|최적/)).not.toBeInTheDocument();
 
@@ -83,6 +84,9 @@ describe('BalanceControlPanel activation guard', () => {
       if (saved.ok) snapshots = saved.snapshots;
     }
     render(<BalanceControlPanel config={{ diversityLevel: 0, memoryMode: 'keep' }} snapshots={snapshots} onConfigChange={vi.fn()} onSave={vi.fn()} onCompare={onCompare} />);
+    const save = screen.getByRole('button', { name: '현재 설정 저장' });
+    expect(save).toBeDisabled();
+    expect(save).not.toHaveAttribute('data-gi-pulse');
     const compare = screen.getByRole('button', { name: '균형 비교' });
     expect(compare).toBeEnabled();
     act(() => {
@@ -92,5 +96,31 @@ describe('BalanceControlPanel activation guard', () => {
     expect(onCompare).toHaveBeenCalledTimes(1);
     expect(compare).toHaveAttribute('data-gi-pulse', 'false');
     expect(compare).toBeDisabled();
+  });
+
+  it('highlights a new save action and replaces motion with a static cue when reduced motion is enabled', async () => {
+    const onSave = vi.fn();
+    const original = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+    const media = { matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: vi.fn(() => media) });
+    const config = { diversityLevel: 0 as const, memoryMode: 'keep' as const };
+
+    const { rerender } = render(
+      <BalanceControlPanel config={config} snapshots={[]} onConfigChange={vi.fn()} onSave={onSave} onCompare={vi.fn()} />,
+    );
+    const save = screen.getByRole('button', { name: '현재 설정 저장' });
+    expect(save).toHaveAttribute('data-gi-pulse', 'true');
+    expect(save).toHaveClass('gi-pulse');
+    expect(screen.queryByText('지금 저장할 차례')).not.toBeInTheDocument();
+
+    media.matches = true;
+    act(() => media.addEventListener.mock.calls[0][1]({ matches: true }));
+    rerender(<BalanceControlPanel config={config} snapshots={[]} onConfigChange={vi.fn()} onSave={onSave} onCompare={vi.fn()} />);
+    expect(save).toHaveAttribute('data-gi-pulse', 'false');
+    expect(save).not.toHaveClass('gi-pulse');
+    expect(screen.getByText('지금 저장할 차례')).toBeInTheDocument();
+
+    if (original) Object.defineProperty(window, 'matchMedia', original);
+    else Reflect.deleteProperty(window, 'matchMedia');
   });
 });

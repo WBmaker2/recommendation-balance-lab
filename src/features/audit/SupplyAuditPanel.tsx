@@ -5,6 +5,7 @@ import { TOPIC_ORDER, TOPICS } from '../../data/topics';
 import { countSupplyCandidates, type AuditPair } from '../../domain/auditComparison';
 import { countTopicCards } from '../../domain/distribution';
 import type { InfluenceFactor, SupplyProfile, TopicId } from '../../domain/types';
+import { TopicCountSummary } from '../../components/common/TopicCountSummary';
 
 export interface SupplyAuditPanelProps {
   pair: AuditPair;
@@ -72,8 +73,13 @@ export function SupplyAuditPanel({ pair, onAnswer }: SupplyAuditPanelProps): Rea
       <p>선택과 설정은 같고, 공급 목록의 기본 토큰만 달라졌습니다.</p>
       <p>사용자 선택은 여러 영향 요인 가운데 하나이며, 이 비교에서는 콘텐츠 공급만 바뀌었습니다.</p>
       <div>
-        <EvidenceTable result={pair.balanced} heading="균형 공급 결과" />
-        <EvidenceTable result={pair.natureRich} heading="자연 풍부 공급 결과" />
+        <TopicCountSummary label="균형 공급 카드 수 요약" counts={countTopicCards(pair.balanced.cards)} />
+        <TopicCountSummary label="자연 풍부 공급 카드 수 요약" counts={countTopicCards(pair.natureRich.cards)} />
+        <details>
+          <summary>자세한 근거 보기</summary>
+          <EvidenceTable result={pair.balanced} heading="균형 공급 결과" />
+          <EvidenceTable result={pair.natureRich} heading="자연 풍부 공급 결과" />
+        </details>
       </div>
       <fieldset>
         <legend>어떤 조건이 달라졌나요?</legend>

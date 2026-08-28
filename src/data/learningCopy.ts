@@ -26,7 +26,7 @@ export const FEEDBACK_LOOP_COPY =
   '선택과 추천 분포 사이의 피드백 고리를 살펴봅니다. 선택 기록뿐 아니라 다양성 설정과 콘텐츠 공급 조건도 결과에 영향을 줍니다.';
 
 export const PRIVACY_NOTICE =
-  '실제 취향, 검색 기록, 계정 정보와 같은 개인정보를 수집하거나 전송하지 않습니다. 선택 기록은 이 탭 안에서만 유지됩니다.';
+  '이 실험에서는 실제 취향이나 검색 기록, 계정 정보를 묻지 않아요. 선택 기록은 이 탭 안에서만 사용해요.';
 
 export const MODEL_WARNING = '가상의 단순 규칙이며 실제 서비스 추천을 판정하지 않습니다';
 
@@ -45,4 +45,9 @@ export const NON_GOALS = [
 export const PURPOSE_LABELS: Record<LearningPurpose, string> = {
   discover: '새로운 주제를 찾기',
   deepen: '이미 아는 주제를 깊게 보기',
+};
+
+export const PURPOSE_SENTENCE_LABELS: Record<LearningPurpose, string> = {
+  discover: '새로운 주제를 찾는',
+  deepen: '이미 아는 주제를 깊게 보는',
 };

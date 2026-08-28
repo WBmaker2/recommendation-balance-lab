@@ -141,9 +141,9 @@ export async function finishReport(page: Page, options: FlowOptions = {}): Promi
   await choose(page.getByRole('radio', { name: /나타난 주제 수가 줄어듭니다/ }), keyboard);
   for (const checkbox of await page.getByRole('checkbox').all()) await choose(checkbox, keyboard);
   await choose(page.getByRole('radio', { name: /새로운 주제를 찾기/ }), keyboard);
-  await choose(page.getByRole('radio', { name: /scenario-a 설정의 실제 카드 수 사용/ }), keyboard);
+  await choose(page.getByRole('radio', { name: /설정 1의 실제 카드 수 사용/ }), keyboard);
   await choose(page.getByRole('radio', { name: /^포커스 주제 카드 수$/ }), keyboard);
-  await choose(page.getByRole('radio', { name: /관찰한 포커스 주제 카드 수/ }), keyboard);
+  await choose(page.getByRole('radio', { name: /포커스 카드 수:/ }), keyboard);
   await choose(page.getByRole('radio', { name: '가상의 단순 규칙' }), keyboard);
   await activate(page.getByRole('button', { name: '모델 보고서 제출' }), keyboard);
 }

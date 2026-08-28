@@ -1,7 +1,9 @@
 import { TOPIC_ORDER, TOPICS } from '../../data/topics';
 import { PURPOSE_LABELS } from '../../data/learningCopy';
+import { scenarioLabel } from '../../data/learnerPresentation';
 import { countTopicCards } from '../../domain/distribution';
 import type { BalanceSnapshot } from '../../domain/balanceScenarios';
+import { TopicCountSummary } from '../../components/common/TopicCountSummary';
 
 interface ScenarioComparisonProps {
   snapshots: readonly BalanceSnapshot[];
@@ -20,25 +22,31 @@ export function ScenarioComparison({ snapshots }: ScenarioComparisonProps): Reac
         const counts = countTopicCards(snapshot.result.cards);
         const represented = TOPIC_ORDER.filter((topicId) => counts[topicId] > 0).length;
         const focus = TOPIC_ORDER.reduce((best, topicId) => snapshot.result.request.interest[topicId] > snapshot.result.request.interest[best] ? topicId : best, TOPIC_ORDER[0]);
+        const label = scenarioLabel(snapshot.id);
+        const titleId = `scenario-title-${index + 1}`;
         return (
-          <article key={snapshot.id} aria-labelledby={`scenario-title-${snapshot.id}`}>
-            <h4 id={`scenario-title-${snapshot.id}`}>{String.fromCharCode(65 + index)} 설정 · {snapshot.id}</h4>
+          <article key={snapshot.id} aria-labelledby={titleId}>
+            <h4 id={titleId}>{label}</h4>
             <p>다양성 설정: {snapshot.config.diversityLevel} · {diversityLabel(snapshot.config.diversityLevel)}</p>
             <p>관심 기록: {snapshot.config.memoryMode === 'keep' ? '관심 기록 유지' : '관심 기록 비우기'}</p>
             <p>표현된 주제 수: {represented} · 포커스 주제: {topicLabel(focus)} · 포커스 주제 카드 수: {counts[focus]}장</p>
-            <table aria-label={`${snapshot.id} 주제별 실제 카드 수`}>
-              <caption>{snapshot.id} 주제별 실제 카드 수</caption>
-              <thead><tr><th scope="col">주제</th><th scope="col">카드 수</th></tr></thead>
-              <tbody>{TOPIC_ORDER.map((topicId) => <tr key={topicId}><th scope="row">{topicLabel(topicId)}</th><td>{counts[topicId]}</td></tr>)}</tbody>
-            </table>
-            <table aria-label={`${snapshot.id} 정수 토큰 근거`}>
-              <caption>{snapshot.id} 정수 토큰 근거</caption>
-              <thead><tr><th scope="col">주제</th><th scope="col">전체 토큰</th></tr></thead>
-              <tbody>{TOPIC_ORDER.map((topicId) => <tr key={topicId}><th scope="row">{topicLabel(topicId)}</th><td>{snapshot.result.tokenBreakdown[topicId].totalTokens}</td></tr>)}</tbody>
-            </table>
-            <ul aria-label={`${snapshot.id} 카드 근거`}>
-              {snapshot.result.cards.map((card) => <li key={card.id}>{topicLabel(card.topicId)} · {card.title}</li>)}
-            </ul>
+            <TopicCountSummary label={`${label} 카드 수 요약`} counts={counts} />
+            <details>
+              <summary>자세한 근거 보기</summary>
+              <table aria-label={`${label} 주제별 실제 카드 수`}>
+                <caption>{label} 주제별 실제 카드 수</caption>
+                <thead><tr><th scope="col">주제</th><th scope="col">카드 수</th></tr></thead>
+                <tbody>{TOPIC_ORDER.map((topicId) => <tr key={topicId}><th scope="row">{topicLabel(topicId)}</th><td>{counts[topicId]}</td></tr>)}</tbody>
+              </table>
+              <table aria-label={`${label} 정수 토큰 근거`}>
+                <caption>{label} 정수 토큰 근거</caption>
+                <thead><tr><th scope="col">주제</th><th scope="col">전체 토큰</th></tr></thead>
+                <tbody>{TOPIC_ORDER.map((topicId) => <tr key={topicId}><th scope="row">{topicLabel(topicId)}</th><td>{snapshot.result.tokenBreakdown[topicId].totalTokens}</td></tr>)}</tbody>
+              </table>
+              <ul aria-label={`${label} 카드 근거`}>
+                {snapshot.result.cards.map((card) => <li key={card.id}>{topicLabel(card.topicId)} · {card.title}</li>)}
+              </ul>
+            </details>
           </article>
         );
       })}

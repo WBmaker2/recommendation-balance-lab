@@ -34,7 +34,7 @@ export function PredictionPanel({
 
   return (
     <section aria-labelledby="prediction-panel-title" data-prediction-panel>
-      <h3 id="prediction-panel-title">다음 목록 예측</h3>
+      <h3 id="prediction-panel-title" tabIndex={-1}>다음 목록 예측</h3>
       <p>{focusLabel} 주제 카드는 다음 목록에서 어떻게 될까요?</p>
       <fieldset>
         <legend>포커스 주제 카드 수 예측</legend>

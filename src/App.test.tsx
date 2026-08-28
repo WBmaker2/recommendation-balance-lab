@@ -45,7 +45,7 @@ describe('추천 알고리즘 균형 실험실 시작 화면', () => {
     expect(screen.getByText('초등 5~6학년 · 30~40분')).toBeInTheDocument();
     expect(screen.getByText('선택과 추천 분포 사이의 피드백 고리를 살펴봅니다.')).toBeInTheDocument();
     expect(screen.getByText('기록 오류 검사, 사용 시간 진단, 개별 주장 팩트체크 활동이 아닙니다.')).toBeInTheDocument();
-    expect(screen.getByText('실제 취향·검색 기록·계정 정보를 입력하지 않습니다.')).toBeInTheDocument();
+    expect(screen.getByText('이 실험에서는 실제 취향이나 검색 기록, 계정 정보를 묻지 않아요. 선택 기록은 이 탭 안에서만 사용해요.')).toBeInTheDocument();
     expect(screen.getByText(MODEL_WARNING)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '실험 시작' })).toBeEnabled();
 
@@ -148,6 +148,9 @@ describe('미션 1: 반복 선택과 다음 목록 예측', () => {
     expect(screen.getAllByRole('button', { name: '왜 이 카드가 나왔나요?' })).toHaveLength(8);
     await user.click(screen.getAllByRole('button', { name: '왜 이 카드가 나왔나요?' })[0]);
     const dialog = screen.getByRole('dialog', { name: '추천 이유' });
+    expect(dialog).toHaveTextContent('관심을 보인 주제에 점수를 더해 이 카드가 먼저 보였어요.');
+    expect(dialog).not.toHaveTextContent(/round|topicIndex|topicCandidateCount/);
+    await user.click(screen.getByText('자세한 계산 보기'));
     for (const field of ['기본 토큰', '관심 토큰', '관심 토큰 × 2', '다양성 토큰', '전체 토큰', '이 주제에 배정된 카드 수']) {
       expect(dialog).toHaveTextContent(field);
     }
@@ -159,6 +162,7 @@ describe('미션 1: 반복 선택과 다음 목록 예측', () => {
     expect(screen.queryByRole('dialog', { name: '추천 이유' })).not.toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: '왜 이 카드가 나왔나요?' })[0]);
     expect(screen.getByRole('dialog', { name: '추천 이유' })).toBeInTheDocument();
+    await user.click(screen.getByText('자세한 계산 보기'));
     expect(screen.getByRole('table', { name: '현재 추천 규칙의 주제별 토큰' })).toBeInTheDocument();
     expect(screen.getAllByRole('row')).toHaveLength(6);
     for (const heading of ['주제', '기본 토큰', '관심 토큰', '관심 토큰 × 2', '다양성 토큰', '전체 토큰']) {
@@ -188,7 +192,8 @@ describe('미션 1: 반복 선택과 다음 목록 예측', () => {
     expect(document.activeElement).toBe(slot.querySelector('button'));
     await user.click(slot.querySelector<HTMLButtonElement>('button')!);
     expect(screen.getByText('관심 토큰 3개')).toBeInTheDocument();
-    expect(document.activeElement).toBe(slot.querySelector('button'));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: '다음 목록 예측' }));
+    expect(screen.getByRole('heading', { name: '다음 목록 예측' })).toHaveAttribute('tabIndex', '-1');
     await user.click(screen.getAllByRole('radio', { name: '늘어난다' })[0]);
     await user.click(screen.getAllByRole('radio', { name: '줄어든다' })[1]);
     expect(screen.getByRole('button', { name: '다음 목록 예측' })).toHaveAttribute('data-gi-pulse', 'true');
@@ -361,6 +366,9 @@ describe('미션 3: 의도적인 주제 탐색', () => {
 
     await user.click(screen.getAllByRole('button', { name: '낯선 주제 열기' })[0]);
     expect(screen.getByRole('heading', { name: '미션 4. 균형 조정' })).toBeInTheDocument();
+    expect(screen.getByText('미션 3 완료')).toBeInTheDocument();
+    expect(screen.getByText(/관찰 결과:/)).toBeInTheDocument();
+    expect(screen.getByText('다음 미션: 균형 설정')).toBeInTheDocument();
     expect(screen.getByText('역사 관심 토큰이 1개 추가되었습니다')).toBeInTheDocument();
     const outcomeTable = screen.getByRole('table', { name: '추천 주제 분포 전후 비교' });
     expect(outcomeTable).toBeInTheDocument();

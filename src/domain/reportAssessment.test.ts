@@ -137,17 +137,18 @@ describe('evidence-based model report assessment', () => {
     expect(assessReport(draft, delta, snapshots, accessorFactors).complete).toBe(false);
   });
 
-  it('generates a factual sentence with purpose, configuration, metric, factors, and warning only', () => {
+  it('generates a child-friendly factual sentence without internal ids or warning text', () => {
     const draft = validDraft(snapshots[0], 'discover', 'topic-variety');
     const sentence = buildReportSentence(draft, { distributionDelta: delta, snapshots, completedFactors: allFactors });
-    expect(sentence).toContain('새로운 주제를 찾기');
-    expect(sentence).toContain('scenario-a');
+    expect(sentence).toContain('새로운 주제를 찾는 목적에서');
+    expect(sentence).toContain('설정 1');
+    expect(sentence).not.toContain('scenario-a');
     expect(sentence).toContain('다양성 토큰 0');
     expect(sentence).toContain('관심 기록 유지');
     expect(sentence).toContain('나타난 주제 수');
-    expect(sentence).toContain(String(draft.evidenceValue));
+    expect(sentence).toContain(`${String(draft.evidenceValue)}개`);
     expect(sentence).toContain('선택 기록·균형 설정·콘텐츠 공급');
-    expect(sentence).toContain('가상의 단순 규칙이며 실제 서비스 추천을 판정하지 않습니다');
+    expect(sentence).not.toContain('실제 서비스 추천을 판정하지 않습니다');
     expect(sentence).not.toMatch(/이름|계정|학생|공유|다운로드|점수|순위|최고|공정/);
   });
 });

@@ -27,6 +27,7 @@ export function BalanceControlPanel({
     (snapshot) => snapshot.config.diversityLevel === config.diversityLevel && snapshot.config.memoryMode === config.memoryMode,
   );
   const saveDisabled = duplicate || snapshots.length >= 3;
+  const saveReady = !saveDisabled;
   const saveReason = snapshots.length >= 3 ? '세 개의 설정만 저장할 수 있습니다.' : duplicate ? '이미 저장한 설정입니다.' : '';
   const handleCompare = (): void => {
     if (!compareReady || compareLock.current) return;
@@ -78,7 +79,16 @@ export function BalanceControlPanel({
         </label>
       </fieldset>
       <p>현재 설정: 다양성 {config.diversityLevel}, 관심 기록 {config.memoryMode === 'keep' ? '유지' : '비우기'}</p>
-      <button type="button" onClick={onSave} disabled={saveDisabled}>현재 설정 저장</button>
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={saveDisabled}
+        data-gi-pulse={saveReady ? (reducedMotion ? 'false' : 'true') : undefined}
+        className={saveReady && !reducedMotion ? 'gi-pulse' : undefined}
+      >
+        <span className="gi-pulse__label">현재 설정 저장</span>
+      </button>
+      {saveReady && reducedMotion ? <p className="gi-pulse__label motion-static-label">지금 저장할 차례</p> : null}
       {saveReason ? <p role="status">{saveReason}</p> : null}
       <button
         type="button"

@@ -20,6 +20,7 @@ import type { BalanceConfig } from './domain/balanceScenarios';
 import type { ReportDraft } from './domain/reportAssessment';
 import type { CardId, InfluenceFactor, TopicId } from './domain/types';
 import { TOPICS } from './data/topics';
+import { useNextTaskReveal } from './features/experiment/useNextTaskReveal';
 
 export { ExplorationOutcome } from './features/exploration/ExplorationOutcome';
 
@@ -49,6 +50,7 @@ function StageContent({ state, ...commands }: StageProps): React.JSX.Element {
   const choiceResult = choiceResultForState(state);
   const reportEvidence = reportEvidenceForState(state);
   const balancePreview = balancePreviewForState(state);
+  useNextTaskReveal({ active: state.stage === 'choice' && state.selectionHistory.length === 3, targetId: 'prediction-panel-title' });
 
   switch (state.stage) {
     case 'intro':
@@ -123,8 +125,7 @@ function StageContent({ state, ...commands }: StageProps): React.JSX.Element {
     case 'report':
       return (
         <>
-          {state.lastError ? <p role="alert">{state.lastError}</p> : null}
-          {reportEvidence ? <ModelReport draft={state.reportDraft} evidence={reportEvidence} onChange={commands.updateReport} onSubmit={commands.submitReport} /> : null}
+          {reportEvidence ? <ModelReport draft={state.reportDraft} evidence={reportEvidence} errorMessage={state.lastError} onChange={commands.updateReport} onSubmit={commands.submitReport} /> : null}
         </>
       );
     case 'complete':

@@ -384,6 +384,6 @@ JavaScript 예외나 warning은 확인하지 못했습니다. 위 404는 현재 
 - `npm run quality`: exit 0 (`lint`, `typecheck`, scripts 7개, 줄 수·경계 검사, Vitest 33개 파일/157개 테스트, production build).
 - `PLAYWRIGHT_PORT=4176 npm run test:e2e`: Chromium 5 passed (학습 흐름, 모바일, axe 6단계, 키보드, reduced-motion).
 - MCP Playwright 로컬 검수: 375×812에서 `document.documentElement.scrollWidth=360`, `window.innerWidth=375`, 가로 넘침 `false`; 콘솔 error 0건; `http://127.0.0.1:5174/favicon.svg` link 확인.
-- 작업 트리 변경은 아직 GitHub Pages에 배포하지 않았습니다. HVC 확인용 기존 주소는 [추천 알고리즘 균형 실험실](https://wbmaker2.github.io/recommendation-balance-lab/)이며, 새 변경의 공개 반영 여부를 나타내는 링크가 아닙니다.
+- 변경 사항은 GitHub Pages에 배포되었고, 공개 확인은 [추천 알고리즘 균형 실험실](https://wbmaker2.github.io/recommendation-balance-lab/)에서 할 수 있습니다. 배포된 HTML·JavaScript·CSS·favicon이 모두 HTTP 200으로 응답했으며, 375×812 공개 학습자 전체 흐름도 완료 상태까지 확인했습니다.
 
 실제 초등학생 1명 이상의 관찰 수용성 검수와 색·확대·물리 기기 확인은 별도 사람 검수로 남겨 둡니다. VoiceOver 구현·검증은 요청 범위에서 제외했습니다.

@@ -137,6 +137,7 @@ MCP Playwright 로컬 브라우저에서 직접 수행했습니다. 모든 흐�
 
 - `codex/recommendation-balance-lab-redesign` 브랜치에 `6d3e40666ef2adf8157b98541e5322c597a4f254` (`feat: complete recommendation balance lab redesign`)을 커밋하고 원격 기능 브랜치에 푸시했습니다.
 - 기능 브랜치를 `main`에 fast-forward 병합한 뒤 `main`을 원격에 푸시했습니다. 이 푸시가 [GitHub Actions Deploy to GitHub Pages 실행 33292214073](https://github.com/WBmaker2/recommendation-balance-lab/actions/runs/33292214073)을 시작했고 `build`·`deploy` job 모두 성공했습니다.
+- 배포 증거를 최신화한 `85cdeaa7546f60f21e686e04a4bf94dfafdd8e19` (`docs: record pages release evidence`)도 `main`에 푸시했고, [후속 Pages 실행 33292298601](https://github.com/WBmaker2/recommendation-balance-lab/actions/runs/33292298601)의 `build`·`deploy` job도 성공했습니다. 현재 원격 `main` HEAD는 `85cdeaa`입니다.
 - Pages API에서 `build_type=workflow`, `source.branch=main`, `https_enforced=true`를 확인했습니다.
 - [공개 학습자 화면](https://wbmaker2.github.io/recommendation-balance-lab/)은 HTTP 200이며 제목 `추천 알고리즘 균형 실험실`, 상대 JS/CSS asset, favicon HTTP 200을 확인했습니다. 공개 375×812 브라우저에서 첫 CTA가 보이고 가로 넘침 없이 피드 2열·증거 표가 렌더링되며 콘솔 오류·경고가 없었습니다.
 - workflow annotation의 Node.js 20 deprecation은 실패가 아닌 경고로 남아 있습니다. HVC 등록/동기화는 별도 요청 없이는 실행하지 않았습니다.

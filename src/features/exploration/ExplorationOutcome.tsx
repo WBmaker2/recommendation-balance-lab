@@ -23,7 +23,7 @@ export function ExplorationOutcome({ before, after, focusTopicId }: ExplorationO
   const compositionChanged = TOPIC_ORDER.some((topicId) => delta.delta[topicId] !== 0);
 
   return (
-    <section aria-labelledby="exploration-outcome-title">
+    <section className="evidence-card exploration-outcome" aria-labelledby="exploration-outcome-title">
       <h3 id="exploration-outcome-title">탐색 결과</h3>
       <div aria-label="미션 3 완료 안내">
         <p><strong>미션 3 완료</strong> — 낯선 주제 카드를 열어 추천 목록의 변화를 살펴보았습니다.</p>

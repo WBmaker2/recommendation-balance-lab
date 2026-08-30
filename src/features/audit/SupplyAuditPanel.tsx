@@ -68,7 +68,7 @@ export function SupplyAuditPanel({ pair, onAnswer }: SupplyAuditPanelProps): Rea
     onAnswer(selected);
   };
   return (
-    <section aria-labelledby="supply-audit-title">
+    <section className="action-panel supply-audit" aria-labelledby="supply-audit-title">
       <h3 id="supply-audit-title">공급 조건 모델 감사</h3>
       <p>선택과 설정은 같고, 공급 목록의 기본 토큰만 달라졌습니다.</p>
       <p>사용자 선택은 여러 영향 요인 가운데 하나이며, 이 비교에서는 콘텐츠 공급만 바뀌었습니다.</p>

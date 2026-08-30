@@ -37,7 +37,7 @@ export function BalanceControlPanel({
   };
 
   return (
-    <section aria-labelledby="balance-control-title">
+    <section className="action-panel balance-control" aria-labelledby="balance-control-title">
       <h3 id="balance-control-title">균형 조절대</h3>
       <p>새로운 주제를 찾기와 이미 아는 주제를 깊게 보기는 서로 다른 설정 비교 근거가 될 수 있습니다.</p>
       <p>하나의 가장 좋은 비율을 정답으로 두지 않습니다.</p>

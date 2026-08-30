@@ -14,6 +14,23 @@ body {
   line-height: 1.6;
 }
 
+h1,
+h2,
+h3,
+h4,
+h5 {
+  color: var(--color-navy);
+  line-height: 1.25;
+  margin-block: 0 var(--space-1);
+  text-wrap: balance;
+}
+
+p,
+ul,
+ol {
+  margin-block: var(--space-1) var(--space-2);
+}
+
 button,
 input,
 a {
@@ -30,6 +47,14 @@ a {
   color: var(--color-action-strong);
 }
 
+button {
+  font-weight: 700;
+  touch-action: manipulation;
+  transition: background-color var(--motion-duration-fast) var(--motion-ease-out), transform var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+button:active:not(:disabled) { transform: translateY(1px); }
+
 :focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 3px;
@@ -45,4 +70,9 @@ td {
   border: 1px solid var(--color-line);
   padding: var(--space-1);
   text-align: left;
+}
+
+.data-table th:not(:first-child),
+.data-table td:not(:first-child) {
+  font-variant-numeric: tabular-nums;
 }

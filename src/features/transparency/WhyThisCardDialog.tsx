@@ -5,6 +5,7 @@ import type { RecommendationExplanation } from '../../domain/recommendationEngin
 
 interface WhyThisCardDialogProps {
   explanation: RecommendationExplanation;
+  restoreFocusElement?: HTMLElement | null;
   onClose(): void;
 }
 
@@ -12,7 +13,7 @@ const focusWithoutScroll = (element: HTMLElement | null): void => {
   element?.focus({ preventScroll: true });
 };
 
-export function WhyThisCardDialog({ explanation, onClose }: WhyThisCardDialogProps): React.JSX.Element {
+export function WhyThisCardDialog({ explanation, restoreFocusElement = null, onClose }: WhyThisCardDialogProps): React.JSX.Element {
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
@@ -23,7 +24,7 @@ export function WhyThisCardDialog({ explanation, onClose }: WhyThisCardDialogPro
     onCloseRef.current = onClose;
   }, [onClose]);
   useLayoutEffect(() => {
-    triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    triggerRef.current = restoreFocusElement ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     const dialog = dialogRef.current;
     if (!dialog) return undefined;
     focusWithoutScroll(dialog);
@@ -61,7 +62,7 @@ export function WhyThisCardDialog({ explanation, onClose }: WhyThisCardDialogPro
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [restoreFocusElement]);
   return (
     <div
       ref={dialogRef}

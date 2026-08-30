@@ -60,7 +60,7 @@ describe('App report learner flow', () => {
     await user.click(screen.getByRole('button', { name: '모델 보고서 제출' }));
 
     expect(screen.getByRole('heading', { name: '실험 완료' })).toBeInTheDocument();
-    expect(screen.getAllByText(MODEL_WARNING).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(MODEL_WARNING)).toHaveLength(1);
     for (const goal of LEARNING_GOALS) expect(screen.getByText(goal)).toBeInTheDocument();
     expect(screen.getByText(/새로운 주제를 찾는 목적에서.*설정 1.*선택 기록·균형 설정·콘텐츠 공급/)).toBeInTheDocument();
 

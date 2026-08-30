@@ -56,7 +56,7 @@ export function DistributionComparison({
   };
 
   return (
-    <section aria-labelledby="distribution-comparison-title">
+    <section className="comparison-panel" aria-labelledby="distribution-comparison-title">
       <h3 id="distribution-comparison-title">추천 분포 비교</h3>
       <p>미션 2 비교 화면을 준비했습니다.</p>
       <p>{buildDistributionSummary(delta, focusTopicId)}</p>
@@ -99,12 +99,15 @@ export function DistributionComparison({
           나타난 주제: {delta.beforeVariety}개 → {delta.afterVariety}개. 좋고 나쁜 비율을 고르는 문제가 아니라 표의 사실을 읽는 활동입니다.
         </p>
       ) : null}
+      {enabled && reducedMotion ? <p className="gi-pulse__label motion-static-label">지금 확인할 차례</p> : null}
       <button
         type="button"
         disabled={!enabled}
+        className={enabled && !reducedMotion ? 'gi-pulse' : undefined}
+        data-gi-pulse={enabled && !reducedMotion ? 'true' : 'false'}
         onClick={submit}
       >
-        분포 문장 확인
+        <span className="gi-pulse__label">분포 문장 확인</span>
       </button>
     </section>
   );

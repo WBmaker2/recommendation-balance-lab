@@ -10,13 +10,13 @@ interface ChangedResultSummaryProps {
 export function ChangedResultSummary({ result }: ChangedResultSummaryProps): React.JSX.Element {
   const counts = countTopicCards(result.cards);
   return (
-    <>
+    <section className="evidence-card" aria-labelledby="comparison-placeholder-title">
       <h3 id="comparison-placeholder-title">예측한 다음 목록의 결정적 결과</h3>
       <ul>
         {Object.entries(counts).map(([topicId, count]) => (
           <li key={topicId}>{TOPICS.find((topic) => topic.id === topicId as TopicId)?.label ?? topicId} {count}장</li>
         ))}
       </ul>
-    </>
+    </section>
   );
 }

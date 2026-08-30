@@ -20,5 +20,8 @@ describe('StageProgress', () => {
     expect(items[3]).toHaveTextContent('진행 중');
     expect(items[4]).toHaveTextContent('예정');
     expect(within(items[3]).getByText('미션 4. 균형 조정')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: '미션 진행' })).toHaveClass('app-header__progress');
+    expect(items[0]).toHaveClass('stage-progress__item');
+    expect(items[3]).toHaveClass('stage-progress__item--current');
   });
 });

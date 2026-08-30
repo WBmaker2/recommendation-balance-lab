@@ -14,7 +14,7 @@ const barStyle = (count: number): React.CSSProperties => ({ width: `${(count / 8
 
 export function DistributionTable({ delta }: DistributionTableProps): React.JSX.Element {
   return (
-    <table aria-label="추천 주제 분포 전후 비교">
+    <table className="data-table" data-number-format="tabular" aria-label="추천 주제 분포 전후 비교">
       <caption>추천 주제 분포 전후 비교</caption>
       <thead>
         <tr>

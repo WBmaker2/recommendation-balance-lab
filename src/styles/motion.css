@@ -13,7 +13,7 @@
 
 .feed-transition {
   animation: feed-arrive 240ms ease-out;
-  transition: transform 240ms ease, opacity 240ms ease;
+  transition: transform var(--motion-duration-standard) var(--motion-ease-out), opacity var(--motion-duration-standard) var(--motion-ease-out);
 }
 
 @keyframes feed-arrive {
@@ -23,6 +23,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  button { transition: none; }
   .gi-pulse,
   .feed-transition { animation: none; transition: none; }
 }

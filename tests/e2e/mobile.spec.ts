@@ -12,8 +12,14 @@ test('keeps every learner stage usable at 375 by 812 without horizontal overflow
   const errors = watchPageErrors(page);
   await page.goto('/');
   await expectNoHorizontalOverflow(page);
+  const introCta = page.getByRole('button', { name: '실험 시작' });
+  await expect(introCta).toBeInViewport();
   await reachChoice(page);
   await expectNoHorizontalOverflow(page);
+  const feedColumns = await page.locator('[data-feed-layout="fixed-eight"]').evaluate((element) => (
+    getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length
+  ));
+  expect(feedColumns, '375px feed must use two compact columns').toBe(2);
   await enterComparison(page);
   await expectNoHorizontalOverflow(page);
   await continueToExploration(page);

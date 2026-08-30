@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CARDS } from '../../data/cards';
 import { LEARNING_GOALS, MODEL_WARNING } from '../../data/learningCopy';
@@ -26,6 +26,12 @@ describe('model report controls', () => {
     const onChange = vi.fn();
     render(<ModelReport draft={emptyReportDraft()} evidence={{ distributionDelta: compareDistributions(countTopicCards(initial.cards), countTopicCards(changed.cards)), snapshots, completedFactors: ['choice-record', 'balance-setting', 'supply-condition'] }} onChange={onChange} onSubmit={vi.fn()} />);
     expect(screen.getByRole('heading', { name: '모델 보고서' })).toBeInTheDocument();
+    const sequence = screen.getByRole('list', { name: '보고서 작성 순서' });
+    expect(sequence).toHaveAttribute('data-report-sequence', 'true');
+    expect(within(sequence).getAllByRole('listitem')).toHaveLength(4);
+    expect(within(sequence).getAllByRole('listitem').map((item) => item.querySelector('strong')?.textContent)).toEqual([
+      '1. 변화 읽기', '2. 조건 고르기', '3. 카드 근거 확인', '4. 한계 쓰기',
+    ]);
     expect(screen.getAllByRole('radio').length).toBeGreaterThan(4);
     expect(screen.getAllByRole('checkbox')).toHaveLength(3);
     expect(screen.getAllByRole('article')).toHaveLength(3);

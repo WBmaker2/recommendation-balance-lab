@@ -8,6 +8,7 @@ import type { InfluenceFactor } from '../../domain/types';
 import type { EvidenceMetric, ModelReportProps, ReportDraft, ReportEvidence } from '../../domain/reportAssessment';
 import { getReportValidationErrors, type ReportValidationError } from '../../domain/reportValidation';
 import { TopicCountSummary } from '../../components/common/TopicCountSummary';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export type { ModelReportProps } from '../../domain/reportAssessment';
 
@@ -45,6 +46,7 @@ function InlineError({ error }: { error: ReportValidationError | null }): React.
 
 export function ModelReport({ draft, evidence, errorMessage = null, onChange, onSubmit }: ModelReportProps): React.JSX.Element {
   const validationErrors = useMemo(() => getReportValidationErrors(draft), [draft]);
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
     if (!errorMessage || validationErrors.length === 0) return;
     const target = document.getElementById(validationErrors[0].targetId);
@@ -76,11 +78,18 @@ export function ModelReport({ draft, evidence, errorMessage = null, onChange, on
   const metricError = errorFor(validationErrors, 'metric');
   const observedError = errorFor(validationErrors, 'observed-value');
   const limitationError = errorFor(validationErrors, 'limitation');
+  const submitReady = validationErrors.length === 0;
 
   return (
-    <section aria-labelledby="model-report-title">
+    <section className="model-report" aria-labelledby="model-report-title">
       <h3 id="model-report-title">모델 보고서</h3>
       <p>관찰한 카드 수와 조건을 선택해 실험의 근거를 정리해 보세요.</p>
+      <ol className="report-sequence" data-report-sequence="true" aria-label="보고서 작성 순서">
+        <li><strong>1. 변화 읽기</strong><span>두 목록의 차이를 고릅니다.</span></li>
+        <li><strong>2. 조건 고르기</strong><span>영향을 준 조건을 표시합니다.</span></li>
+        <li><strong>3. 카드 근거 확인</strong><span>저장한 설정과 지표를 연결합니다.</span></li>
+        <li><strong>4. 한계 쓰기</strong><span>가상 모형의 범위를 확인합니다.</span></li>
+      </ol>
       {unresolvedError ? <p role="alert" className="inline-error">{unresolvedError}</p> : null}
       <fieldset id="report-focus-direction" tabIndex={-1} aria-describedby={errorId(focusError)}>
         <legend>선택 후 변화</legend>
@@ -160,7 +169,15 @@ export function ModelReport({ draft, evidence, errorMessage = null, onChange, on
         <label><input id="report-limitation-habit" aria-describedby={errorId(limitationError)} type="radio" name="report-limitation" checked={draft.limitationChoice === 'habit-diagnosis'} onChange={() => onChange(updateDraft(draft, { limitationChoice: 'habit-diagnosis' }))} /> 사용 습관 진단</label>
         <InlineError error={limitationError} />
       </fieldset>
-      <button type="button" onClick={onSubmit}>모델 보고서 제출</button>
+      {submitReady && reducedMotion ? <p className="gi-pulse__label motion-static-label">이제 보고서를 제출할 수 있어요.</p> : null}
+      <button
+        type="button"
+        className={submitReady && !reducedMotion ? 'gi-pulse' : undefined}
+        data-gi-pulse={submitReady && !reducedMotion ? 'true' : 'false'}
+        onClick={onSubmit}
+      >
+        <span className="gi-pulse__label">모델 보고서 제출</span>
+      </button>
     </section>
   );
 }

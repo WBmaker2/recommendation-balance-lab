@@ -27,6 +27,16 @@ const renderFeed = (reduced: boolean) => {
 };
 
 describe('RecommendationFeed transitions', () => {
+  it('marks the feed compact and groups each card action pair', () => {
+    render(<RecommendationFeed result={initial} selectedIds={[]} focusTopicId="science" onSelect={() => undefined} />);
+
+    const feed = screen.getByRole('region', { name: '현재 추천 피드' });
+    expect(feed).toHaveClass('recommendation-feed');
+    expect(feed).toHaveAttribute('data-feed-density', 'compact');
+    expect(feed.querySelectorAll('.recommendation-card__actions')).toHaveLength(8);
+    expect(feed.querySelectorAll('.recommendation-card__actions button')).toHaveLength(16);
+  });
+
   it('mounts the before/after transition after an accepted replacement, not initially', async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();

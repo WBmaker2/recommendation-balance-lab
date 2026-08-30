@@ -6,11 +6,17 @@
   --color-line: #bcccdc;
   --color-action: #1d4ed8;
   --color-action-strong: #173ea5;
+  --color-evidence: #0f766e;
+  --color-error: #b91c1c;
   --color-focus: #f59e0b;
   --radius-card: 16px;
   --space-1: 0.5rem;
   --space-2: 1rem;
   --space-3: 1.5rem;
   --space-4: 2rem;
-  --content-width: 1120px;
+  --space-5: 3rem;
+  --content-width: 1180px;
+  --motion-duration-fast: 180ms;
+  --motion-duration-standard: 240ms;
+  --motion-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }

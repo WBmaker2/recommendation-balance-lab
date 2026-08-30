@@ -8,7 +8,7 @@ export interface RecommendationCardProps {
   explanation: RecommendationExplanation;
   selected: boolean;
   onSelect(): void;
-  onShowReason?(): void;
+  onShowReason?(trigger: HTMLButtonElement): void;
 }
 
 export function RecommendationCard({
@@ -32,13 +32,15 @@ export function RecommendationCard({
       <TopicBadge topic={topic} decorativeIcon />
       <h3 id={titleId}>{topic.label} 추천 카드: {card.title}</h3>
       <p>{card.summary}</p>
-      <button type="button" aria-pressed={selected} onClick={onSelect}>
-        이 카드 선택
-      </button>
-      <button type="button" onClick={onShowReason}>
-        왜 이 카드가 나왔나요?
-      </button>
-      <p aria-label="관심 토큰 증거">
+      <div className="recommendation-card__actions">
+        <button type="button" aria-pressed={selected} onClick={onSelect}>
+          이 카드 선택
+        </button>
+        <button type="button" onClick={(event) => onShowReason?.(event.currentTarget)}>
+          왜 이 카드가 나왔나요?
+        </button>
+      </div>
+      <p className="recommendation-card__evidence" aria-label="관심 토큰 증거">
         관심 토큰 {explanation.interestTokens}개
       </p>
     </article>

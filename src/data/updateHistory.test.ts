@@ -8,6 +8,16 @@ describe('업데이트 내역 데이터', () => {
       category: '개선',
       summary: '학습자용 문장과 모바일 흐름 개선',
     });
+    expect(UPDATE_HISTORY).toContainEqual({
+      date: '2026-08-29',
+      category: '개선',
+      summary: '첫 행동 위계·모바일 카드 밀도·미션 안내를 재설계',
+    });
+    expect(UPDATE_HISTORY).toContainEqual({
+      date: '2026-08-30',
+      category: '개선',
+      summary: '주제 배지 의미·표 숫자 가독성·모션 토큰을 보강',
+    });
   });
 
   it('keeps entries in chronological ISO date order with useful summaries', () => {

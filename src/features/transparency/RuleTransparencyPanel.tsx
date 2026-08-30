@@ -7,7 +7,7 @@ interface RuleTransparencyPanelProps {
 
 export function RuleTransparencyPanel({ result }: RuleTransparencyPanelProps): React.JSX.Element {
   return (
-    <section aria-labelledby="rule-transparency-title">
+    <section className="evidence-card rule-transparency" aria-labelledby="rule-transparency-title">
       <h3 id="rule-transparency-title">추천 규칙 투명창</h3>
       <p>공급 조건: 균형 공급</p>
       <p>카드 8장을 고정하고, 토큰이 큰 주제부터 결정적 규칙으로 배정합니다. 같은 입력은 같은 목록을 만듭니다.</p>

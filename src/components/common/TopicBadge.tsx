@@ -5,10 +5,10 @@ export interface TopicBadgeProps {
   decorativeIcon?: boolean;
 }
 
-export function TopicBadge({ topic, decorativeIcon = false }: TopicBadgeProps): React.JSX.Element {
+export function TopicBadge({ topic }: TopicBadgeProps): React.JSX.Element {
   return (
     <span className={`topic-badge topic--${topic.id}`} data-pattern={topic.pattern}>
-      <span aria-hidden={decorativeIcon}>{topic.icon}</span>
+      <span aria-hidden="true">{topic.icon}</span>
       <span>{topic.label}</span>
     </span>
   );

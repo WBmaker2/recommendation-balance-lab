@@ -15,4 +15,6 @@ export const UPDATE_HISTORY: readonly UpdateEntry[] = [
   { date: '2026-08-27', category: '개선', summary: '실제 추천 흐름 전환과 모션 환경 검증 보강' },
   { date: '2026-08-27', category: '개선', summary: '모바일·키보드·스크린 리더 학습 흐름 개선' },
   { date: '2026-08-28', category: '개선', summary: '학습자용 문장과 모바일 흐름 개선' },
+  { date: '2026-08-29', category: '개선', summary: '첫 행동 위계·모바일 카드 밀도·미션 안내를 재설계' },
+  { date: '2026-08-30', category: '개선', summary: '주제 배지 의미·표 숫자 가독성·모션 토큰을 보강' },
 ] as const;

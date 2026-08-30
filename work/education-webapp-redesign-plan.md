@@ -522,4 +522,4 @@ The verified direction is balanced Minimalism/Swiss structure, subtle motion, mo
 **Acceptance**
 
 - The report records the corrected skill paths, generated design-system path, detector result, exact command results, and unresolved human/device review without claiming approval.
-- No commit, push, release, deployment, HVC registration, or external service connection is run.
+- Implementation verification completed without release side effects; the later user-approved `6d3e406` commit, push, and Pages deployment are documented in the report's release evidence. HVC registration and external service connections remain out of scope.

@@ -124,4 +124,4 @@
 
 실패 테스트를 먼저 추가한 뒤 최소 구현과 통과 검증을 진행했습니다. `TopicBadge.test.tsx`와 `DistributionTable.test.tsx`, `AppShell.test.tsx`를 포함해 최종 `npm run test:run`은 37개 파일·164개 테스트를 통과했습니다. `$impeccable` detector는 UI 수정 후 한 번 실행했고 결과는 `[]`입니다.
 
-MCP 브라우저에서 320·375·768·1280px의 CTA·가로 넘침·2열 모바일 피드, 전체 5개 미션, dialog 포커스/Tab/Escape, reduced-motion 정적 cue와 콘솔 오류 0건을 확인했습니다. Playwright CLI는 macOS Chromium `MachPortRendezvousServer ... Permission denied (1100)`/`SIGTRAP` 환경 제약으로 대체했으며, VoiceOver·실제 아동·실기기/Safari·색상 대비·확대 검토는 이 감사의 승인 범위가 아닙니다. 이번 보완 실행에서는 커밋·푸시·배포·HVC 등록을 하지 않았습니다.
+MCP 브라우저에서 320·375·768·1280px의 CTA·가로 넘침·2열 모바일 피드, 전체 5개 미션, dialog 포커스/Tab/Escape, reduced-motion 정적 cue와 콘솔 오류 0건을 확인했습니다. Playwright CLI는 macOS Chromium `MachPortRendezvousServer ... Permission denied (1100)`/`SIGTRAP` 환경 제약으로 대체했으며, VoiceOver·실제 아동·실기기/Safari·색상 대비·확대 검토는 이 감사의 승인 범위가 아닙니다. 보완 구현 검증 후 `6d3e406`을 커밋·푸시했고 Pages workflow `33292214073`이 성공했습니다. HVC 등록은 하지 않았습니다.

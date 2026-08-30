@@ -2,7 +2,7 @@
 
 작성일: 2026-08-29
 범위: 기존 React/Vite 교육용 앱의 안전한 프레젠테이션·반응형 리디자인
-공개 URL: `https://wbmaker2.github.io/recommendation-balance-lab/` (이번 작업에서는 배포하지 않음)
+공개 URL: `https://wbmaker2.github.io/recommendation-balance-lab/` (2026-08-30 `6d3e406` 배포 완료)
 
 ## 결과 요약
 
@@ -68,7 +68,7 @@ MCP Playwright 로컬 브라우저에서 직접 수행했습니다. 모든 흐�
 
 - 실제 아동 관찰 테스트, 교사·보호자 검토, 물리 모바일 기기, Safari, 색상 대비·실제 확대 검토는 pending입니다.
 - VoiceOver 구현 및 검증은 사용자 지시에 따라 제외했습니다.
-- Git 커밋, 브랜치, 푸시, GitHub Pages 배포, HVC 등록/동기화는 실행하지 않았습니다.
+- Git 커밋·브랜치 푸시·GitHub Pages 배포는 아래 release evidence에서 완료했으며, HVC 등록/동기화는 실행하지 않았습니다.
 
 ## 관련 문서
 
@@ -131,4 +131,12 @@ MCP Playwright 로컬 브라우저에서 직접 수행했습니다. 모든 흐�
 
 ### 범위 경계
 
-실제 초등학생 관찰·교사/보호자 검토·물리 모바일 기기·Safari·색상 대비·실제 확대는 아직 수행하지 않았습니다. VoiceOver 구현과 검증은 사용자 지시에 따라 제외했습니다. 이 재실행에서는 Git 커밋, 푸시, Pages 배포, HVC 등록·동기화, 외부 서비스 연결을 실행하지 않았습니다.
+실제 초등학생 관찰·교사/보호자 검토·물리 모바일 기기·Safari·색상 대비·실제 확대는 아직 수행하지 않았습니다. VoiceOver 구현과 검증은 사용자 지시에 따라 제외했습니다. HVC 등록·동기화와 외부 서비스 연결은 실행하지 않았습니다.
+
+## 2026-08-30 커밋·푸시·Pages 배포 증거
+
+- `codex/recommendation-balance-lab-redesign` 브랜치에 `6d3e40666ef2adf8157b98541e5322c597a4f254` (`feat: complete recommendation balance lab redesign`)을 커밋하고 원격 기능 브랜치에 푸시했습니다.
+- 기능 브랜치를 `main`에 fast-forward 병합한 뒤 `main`을 원격에 푸시했습니다. 이 푸시가 [GitHub Actions Deploy to GitHub Pages 실행 33292214073](https://github.com/WBmaker2/recommendation-balance-lab/actions/runs/33292214073)을 시작했고 `build`·`deploy` job 모두 성공했습니다.
+- Pages API에서 `build_type=workflow`, `source.branch=main`, `https_enforced=true`를 확인했습니다.
+- [공개 학습자 화면](https://wbmaker2.github.io/recommendation-balance-lab/)은 HTTP 200이며 제목 `추천 알고리즘 균형 실험실`, 상대 JS/CSS asset, favicon HTTP 200을 확인했습니다. 공개 375×812 브라우저에서 첫 CTA가 보이고 가로 넘침 없이 피드 2열·증거 표가 렌더링되며 콘솔 오류·경고가 없었습니다.
+- workflow annotation의 Node.js 20 deprecation은 실패가 아닌 경고로 남아 있습니다. HVC 등록/동기화는 별도 요청 없이는 실행하지 않았습니다.

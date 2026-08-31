@@ -162,7 +162,7 @@ describe('미션 1: 반복 선택과 다음 목록 예측', () => {
     expect(screen.queryByRole('dialog', { name: '추천 이유' })).not.toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: '왜 이 카드가 나왔나요?' })[0]);
     expect(screen.getByRole('dialog', { name: '추천 이유' })).toBeInTheDocument();
-    await user.click(screen.getByText('자세한 계산 보기'));
+    await user.click(screen.getByText('토큰 계산표 자세히 보기'));
     expect(screen.getByRole('table', { name: '현재 추천 규칙의 주제별 토큰' })).toBeInTheDocument();
     expect(screen.getAllByRole('row')).toHaveLength(6);
     for (const heading of ['주제', '기본 토큰', '관심 토큰', '관심 토큰 × 2', '다양성 토큰', '전체 토큰']) {
@@ -356,7 +356,9 @@ describe('미션 3: 의도적인 주제 탐색', () => {
     expect(screen.getByText('이 선택은 실제 취향이 아니라 가상 모형을 시험하는 행동입니다.')).toBeInTheDocument();
     const explorationButtons = screen.getAllByRole('button', { name: '낯선 주제 열기' });
     expect(explorationButtons).toHaveLength(3);
-    for (const button of explorationButtons) {
+    expect(explorationButtons[0]).toHaveClass('gi-pulse');
+    expect(explorationButtons[0]).toHaveAttribute('data-gi-pulse', 'true');
+    for (const button of explorationButtons.slice(1)) {
       expect(button).not.toHaveClass('gi-pulse');
       expect(button).not.toHaveAttribute('data-gi-pulse');
     }

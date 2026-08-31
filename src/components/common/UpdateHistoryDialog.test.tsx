@@ -53,7 +53,7 @@ describe('업데이트 내역 dialog', () => {
     const dialog = screen.getByRole('dialog', { name: '업데이트 내역' }) as HTMLDialogElement;
     expect(dialog).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '업데이트 내역' })).toBeInTheDocument();
-    expect([...dialog.querySelectorAll('time')].map((time) => time.dateTime)).toEqual(['2026-08-26', '2026-08-27', '2026-08-27', '2026-08-27', '2026-08-27', '2026-08-27', '2026-08-27', '2026-08-28', '2026-08-29', '2026-08-30']);
+    expect([...dialog.querySelectorAll('time')].map((time) => time.dateTime)).toEqual(['2026-08-26', '2026-08-27', '2026-08-27', '2026-08-27', '2026-08-27', '2026-08-27', '2026-08-27', '2026-08-28', '2026-08-29', '2026-08-30', '2026-08-31']);
     expect(screen.getByRole('button', { name: '닫기' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '닫기' }));

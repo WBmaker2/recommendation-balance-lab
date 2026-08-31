@@ -18,6 +18,11 @@ describe('업데이트 내역 데이터', () => {
       category: '개선',
       summary: '주제 배지 의미·표 숫자 가독성·모션 토큰을 보강',
     });
+    expect(UPDATE_HISTORY).toContainEqual({
+      date: '2026-08-31',
+      category: '개선',
+      summary: '토큰 설명·근거 표 접기·탐색과 감사 행동 강조를 보강',
+    });
   });
 
   it('keeps entries in chronological ISO date order with useful summaries', () => {

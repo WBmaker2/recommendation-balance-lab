@@ -6,6 +6,7 @@ import { countSupplyCandidates, type AuditPair } from '../../domain/auditCompari
 import { countTopicCards } from '../../domain/distribution';
 import type { InfluenceFactor, SupplyProfile, TopicId } from '../../domain/types';
 import { TopicCountSummary } from '../../components/common/TopicCountSummary';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export interface SupplyAuditPanelProps {
   pair: AuditPair;
@@ -62,6 +63,7 @@ function EvidenceTable({ result, heading }: EvidenceTableProps): React.JSX.Eleme
 export function SupplyAuditPanel({ pair, onAnswer }: SupplyAuditPanelProps): React.JSX.Element {
   const [selected, setSelected] = useState<InfluenceFactor | null>(null);
   const answerLock = useRef(false);
+  const reducedMotion = useReducedMotion();
   const handleSubmit = (): void => {
     if (!selected || (selected === 'supply-condition' && answerLock.current)) return;
     if (selected === 'supply-condition') answerLock.current = true;
@@ -117,7 +119,16 @@ export function SupplyAuditPanel({ pair, onAnswer }: SupplyAuditPanelProps): Rea
       {selected && selected !== 'supply-condition' ? (
         <p role="status">선택과 설정은 같았습니다. 바뀐 공급 조건을 다시 찾아보세요.</p>
       ) : null}
-      <button type="button" onClick={handleSubmit} disabled={!selected}>변화 원인 확인</button>
+      {selected && reducedMotion ? <p className="gi-pulse__label motion-static-label">지금 원인을 확인할 차례</p> : null}
+      <button
+        type="button"
+        className={selected && !reducedMotion ? 'gi-pulse' : undefined}
+        data-gi-pulse={selected ? (reducedMotion ? 'false' : 'true') : undefined}
+        onClick={handleSubmit}
+        disabled={!selected}
+      >
+        <span className="gi-pulse__label">변화 원인 확인</span>
+      </button>
     </section>
   );
 }

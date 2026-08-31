@@ -56,7 +56,26 @@ describe('미션 5 공급 조건 감사 learner flow', () => {
     await user.click(submit);
     await user.click(submit);
     expect(onAnswer).toHaveBeenCalledTimes(2);
+    expect(submit).toHaveAttribute('data-gi-pulse', 'true');
+    expect(submit).toHaveClass('gi-pulse');
+  });
+
+  it('uses a static cause-check cue when reduced motion is enabled', () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
+    });
+    render(<SupplyAuditPanel pair={pair} onAnswer={vi.fn()} />);
+    const submit = screen.getByRole('button', { name: '변화 원인 확인' });
+    expect(submit).toBeDisabled();
     expect(submit).not.toHaveAttribute('data-gi-pulse');
+
+    screen.getByRole('radio', { name: '콘텐츠 공급' }).click();
+    expect(submit).toHaveAttribute('data-gi-pulse', 'false');
     expect(submit).not.toHaveClass('gi-pulse');
+    expect(screen.getByText('지금 원인을 확인할 차례')).toHaveClass('motion-static-label');
+    if (original) Object.defineProperty(window, 'matchMedia', original);
+    else Reflect.deleteProperty(window, 'matchMedia');
   });
 });

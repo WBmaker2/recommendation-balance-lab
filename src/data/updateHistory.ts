@@ -17,4 +17,5 @@ export const UPDATE_HISTORY: readonly UpdateEntry[] = [
   { date: '2026-08-28', category: '개선', summary: '학습자용 문장과 모바일 흐름 개선' },
   { date: '2026-08-29', category: '개선', summary: '첫 행동 위계·모바일 카드 밀도·미션 안내를 재설계' },
   { date: '2026-08-30', category: '개선', summary: '주제 배지 의미·표 숫자 가독성·모션 토큰을 보강' },
+  { date: '2026-08-31', category: '개선', summary: '토큰 설명·근거 표 접기·탐색과 감사 행동 강조를 보강' },
 ] as const;

@@ -42,9 +42,11 @@ export function BalanceControlPanel({
       <p>새로운 주제를 찾기와 이미 아는 주제를 깊게 보기는 서로 다른 설정 비교 근거가 될 수 있습니다.</p>
       <p>하나의 가장 좋은 비율을 정답으로 두지 않습니다.</p>
       <label htmlFor="diversity-level">다양성 토큰 설정</label>
+      <p id="diversity-level-help" className="term-hint">다양성 토큰은 다른 주제를 보여 주는 점수예요. 0은 보태지 않고, 2는 가장 많이 보태요.</p>
       <input
         id="diversity-level"
         name="다양성 토큰 설정"
+        aria-describedby="diversity-level-help"
         type="range"
         min="0"
         max="2"

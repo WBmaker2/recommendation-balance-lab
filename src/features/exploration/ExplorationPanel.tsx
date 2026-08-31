@@ -4,6 +4,7 @@ import { TopicBadge } from '../../components/common/TopicBadge';
 import { findExplorationCandidates } from '../../domain/experimentState';
 import type { RecommendationResult } from '../../domain/recommendationEngine';
 import type { TopicId } from '../../domain/types';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export interface ExplorationPanelProps {
   currentResult: RecommendationResult;
@@ -18,6 +19,7 @@ export function ExplorationPanel({
 }: ExplorationPanelProps): React.JSX.Element {
   const candidates = findExplorationCandidates(currentResult, CARDS, focusTopicId);
   const visibleCandidates = candidates.slice(0, 3);
+  const reducedMotion = useReducedMotion();
 
   return (
     <section className="exploration-panel" aria-labelledby="exploration-panel-title">
@@ -27,8 +29,10 @@ export function ExplorationPanel({
       {visibleCandidates.length === 0 ? (
         <p>열어 볼 수 있는 새 주제 카드가 없습니다.</p>
       ) : (
-        <ul aria-label="탐색 후보 목록">
-          {visibleCandidates.map((card) => {
+        <>
+          {reducedMotion ? <p className="gi-pulse__label motion-static-label">지금 열어 볼 차례</p> : null}
+          <ul aria-label="탐색 후보 목록">
+          {visibleCandidates.map((card, index) => {
             const topic = TOPICS.find((item) => item.id === card.topicId);
             if (!topic) return null;
             return (
@@ -43,15 +47,18 @@ export function ExplorationPanel({
                   <p>{card.summary}</p>
                   <button
                     type="button"
+                    className={index === 0 && !reducedMotion ? 'gi-pulse' : undefined}
+                    data-gi-pulse={index === 0 ? (reducedMotion ? 'false' : 'true') : undefined}
                     onClick={() => onExplore(card.topicId)}
                   >
-                    낯선 주제 열기
+                    <span className="gi-pulse__label">낯선 주제 열기</span>
                   </button>
                 </article>
               </li>
             );
           })}
-        </ul>
+          </ul>
+        </>
       )}
     </section>
   );

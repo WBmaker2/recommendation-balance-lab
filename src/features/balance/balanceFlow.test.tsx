@@ -108,6 +108,9 @@ describe('BalanceControlPanel activation guard', () => {
     const { rerender } = render(
       <BalanceControlPanel config={config} snapshots={[]} onConfigChange={vi.fn()} onSave={onSave} onCompare={vi.fn()} />,
     );
+    const slider = screen.getByLabelText('다양성 토큰 설정');
+    expect(screen.getByText(/다양성 토큰은 다른 주제를 보여 주는 점수예요/)).toBeInTheDocument();
+    expect(slider).toHaveAttribute('aria-describedby', 'diversity-level-help');
     const save = screen.getByRole('button', { name: '현재 설정 저장' });
     expect(save).toHaveAttribute('data-gi-pulse', 'true');
     expect(save).toHaveClass('gi-pulse');

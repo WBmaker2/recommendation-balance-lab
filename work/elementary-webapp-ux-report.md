@@ -10,6 +10,7 @@
 - 주 페르소나: 초등 5~6학년 서윤(10~12세), 가드레일 초등 3~4학년 준호(8~10세)
 - 브라우저 뷰포트: 320×800, 375×812, 1280×900; 최종 전체 흐름은 375×812에서 재실행
 - 최종 상태: `DONE_WITH_CONCERNS`
+- 릴리스 상태: `DEPLOYED`
 - 수용 게이트: `conditional` — P0/P1 없음, 구현·브라우저 게이트 통과, 실제 학생·교사·Safari/실기기·정량 대비 검토는 미실행
 - 100점 보조 점수: `not run` — 관찰 자료는 충분하지만 실제 학생 표본과 정량 색상 대비 측정을 수행하지 않아 점수를 추정하지 않음
 
@@ -115,7 +116,7 @@ npm run quality
 - VoiceOver 구현·검증은 사용자·프로젝트 범위에서 제외했습니다. 키보드, DOM 의미, 기존 axe 계약은 유지·회귀 확인했습니다.
 - 실제 초등학생/교사 표본, Safari, 물리 모바일 기기, 정량 색상 대비·확대 검사는 실행하지 않았습니다.
 - `npm run test:e2e`는 이 macOS 환경의 기존 Chromium worker `MachPortRendezvousServer ... Permission denied (1100)`/`SIGTRAP` 제약이 있어 같은 실패를 반복하지 않고 MCP 브라우저 증거로 대체했습니다. CI/Linux 실행은 별도 게이트입니다.
-- 이번 요청에서는 새 패키지·외부 서비스·이미지·Git commit·push·Pages 배포·HVC 등록을 실행하지 않았습니다. 따라서 공개 Pages URL에는 이번 로컬 변경이 아직 반영되지 않았습니다.
+- 새 패키지·외부 서비스·이미지·HVC 등록은 실행하지 않았습니다. Git commit·push와 Pages 배포는 별도 release gate에서 완료했으며, 아래 Release evidence에 merge와 공개 검증을 기록했습니다.
 
 ## 전문 라우팅과 자산 결정
 
@@ -127,4 +128,15 @@ npm run quality
 
 학습자는 같은 입력이 같은 목록을 만들 수 있다는 점, 반복 선택이 포커스 주제의 점수를 바꾼다는 점, 다양성 설정과 공급 조건이 결과에 어떤 차이를 만드는지 표와 보고서로 설명하도록 안내받습니다. 이번 변경은 그 핵심 사실을 바꾸지 않고 첫 용어 풀이와 다음 행동의 시각적 위계를 보강했습니다.
 
-다음 단계는 실제 초등 5~6학년 2~3명과 교사 1명의 짧은 사용성 검토를 375px 모바일·키보드 기준으로 진행하고, Safari/실기기 및 정량 대비를 확인하는 것입니다. 그 결과가 수용되면 별도의 release gate 승인 후 변경 파일만 커밋하고, CI/Pages·공개 학습자 경로를 다시 검증하십시오.
+다음 단계는 실제 초등 5~6학년 2~3명과 교사 1명의 짧은 사용성 검토를 375px 모바일·키보드 기준으로 진행하고, Safari/실기기 및 정량 대비를 확인하는 것입니다. 이후 변경이 생기면 별도의 release gate에서 변경 파일만 커밋하고, CI/Pages·공개 학습자 경로를 다시 검증하십시오.
+
+## Release evidence
+
+- 작업 브랜치: `codex/recommendation-balance-lab-ux-release`
+- 개선 커밋: `f8b5e0c` — `fix: improve elementary learner cues`
+- PR: [#3](https://github.com/WBmaker2/recommendation-balance-lab/pull/3), 2026-08-31에 `main`으로 병합
+- merge commit: `7cf11cf2ccd4f8cf3d3b2da824f2dc96070758a0`
+- Pages workflow: [33348799381](https://github.com/WBmaker2/recommendation-balance-lab/actions/runs/33348799381) 성공. 빌드·artifact 업로드·deploy job 모두 통과했으며 Node.js 20 deprecation annotation만 남았습니다.
+- 공개 URL: [https://wbmaker2.github.io/recommendation-balance-lab/](https://wbmaker2.github.io/recommendation-balance-lab/)
+- 공개 HTTP 확인: HTTP 200, title `추천 알고리즘 균형 실험실`, `./favicon.svg`와 상대 경로 JS/CSS 자산 확인
+- 공개 MCP Playwright: 375×812에서 choice→prediction→comparison 오답 회복→exploration→balance→audit 오답 회복→report 빈 제출/완료→reset을 확인했습니다. 최종 audit/report/complete 단계의 `scrollWidth=360`, `clientWidth=360`, page/console error와 실패 요청은 0건입니다.
